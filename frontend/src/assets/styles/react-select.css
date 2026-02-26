@@ -1,0 +1,77 @@
+.react-select-container {
+  @apply self-start;
+}
+
+.react-select-container {
+  @apply overflow-hidden rounded-xl;
+  overflow: visible;
+  background-color: transparent !important;
+}
+
+.react-select__single-value {
+  @apply !text-card-foreground;
+}
+
+.react-select__input-container {
+  @apply !text-foreground;
+}
+
+.react-select__control {
+  @apply !border-input !min-h-9 !rounded-md !border !bg-transparent !text-sm !shadow-xs;
+  /* min-height: 35px !important; */
+  height: 100% !important;
+}
+
+.invalid .react-select__control {
+  @apply !ring-destructive/20 dark:!ring-destructive/40 !border-destructive;
+}
+
+.react-select__control--is-focused {
+  @apply !border-ring !ring-ring/50 !ring-[3px];
+  outline: none !important;
+}
+
+.react-select__indicators {
+  height: auto !important;
+  @apply flex gap-1 pr-2;
+}
+
+.react-select__indicators > div {
+  @apply !p-0;
+}
+
+.react-select__indicators > div > svg {
+  @apply !text-muted-foreground !size-4;
+}
+
+.react-select__indicator-separator {
+  @apply !bg-border hidden;
+}
+
+/* Scrollbar Styling */
+.react-select__menu {
+  @apply !bg-card !z-50 overflow-hidden rounded-md;
+}
+
+.react-select__menu-list {
+  @apply !bg-card;
+}
+
+.react-select__option {
+  @apply !px-3 !py-2 !text-sm;
+}
+
+.react-select__option:active,
+.react-select__option:hover,
+.react-select__option--is-focused {
+  @apply !bg-accent !text-accent-foreground;
+}
+
+.react-select__option--is-selected,
+.react-select__option--is-selected:hover {
+  @apply !bg-primary !text-primary-foreground;
+}
+
+.dark .react-select__multi-value__remove {
+  @apply text-black;
+}

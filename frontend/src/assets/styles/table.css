@@ -1,0 +1,14 @@
+table.table-sm th,
+table.table-sm td {
+  @apply !py-1;
+}
+
+table.table-md th,
+table.table-md td {
+  @apply !py-2;
+}
+
+table.table-sm tbody tr,
+table.table-md tbody tr {
+  @apply even:bg-muted hover:bg-primary/10;
+}

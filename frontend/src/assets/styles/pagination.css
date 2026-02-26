@@ -1,0 +1,43 @@
+.pagination {
+  @apply flex justify-center select-none;
+}
+
+.pagination li {
+  @apply bg-background text-primary overflow-hidden border-y border-l;
+}
+
+.pagination li:first-child {
+  @apply rounded-l-lg;
+}
+
+.pagination li:last-child {
+  @apply rounded-r-lg border-r;
+}
+
+.pagination li a {
+  @apply block items-center justify-center text-xs whitespace-nowrap;
+}
+
+.pagination li.active {
+  @apply border-primary bg-primary text-primary-foreground border-r;
+}
+
+.pagination li.active + li {
+  @apply border-l-0;
+}
+
+.pagination li:not(.active):not(.disabled):hover {
+  @apply border-primary bg-primary/90 text-primary-foreground border-r;
+}
+
+.pagination li:not(.active):not(.disabled):hover + li {
+  @apply border-l-0;
+}
+
+.pagination li.disabled a {
+  @apply bg-muted text-muted-foreground cursor-default;
+}
+
+.pagination.pagination-sm li a {
+  @apply flex min-h-7 min-w-7 items-center px-2 align-middle;
+}

@@ -1,0 +1,19 @@
+{
+  "name": "template_2026_02",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "concurrently \"cd frontend && npm run dev\" \"cd backend && php artisan serve\"",
+    "cron": "cd backend && php artisan schedule:work",
+    "queue": "cd backend && php artisan queue:work"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

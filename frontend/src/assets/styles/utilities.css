@@ -1,0 +1,53 @@
+/* padding */
+@utility p-layout {
+  padding: var(--layout);
+}
+@utility px-layout {
+  padding-left: var(--layout);
+  padding-right: var(--layout);
+}
+@utility py-layout {
+  padding-top: var(--layout);
+  padding-bottom: var(--layout);
+}
+@utility pl-layout {
+  padding-left: var(--layout);
+}
+@utility pr-layout {
+  padding-right: var(--layout);
+}
+@utility pt-layout {
+  padding-top: var(--layout);
+}
+@utility pb-layout {
+  padding-bottom: var(--layout);
+}
+
+/* margin */
+@utility m-layout {
+  margin: var(--layout);
+}
+@utility mx-layout {
+  margin-left: var(--layout);
+  margin-right: var(--layout);
+}
+@utility my-layout {
+  margin-top: var(--layout);
+  margin-bottom: var(--layout);
+}
+@utility ml-layout {
+  margin-left: var(--layout);
+}
+@utility mr-layout {
+  margin-right: var(--layout);
+}
+@utility mt-layout {
+  margin-top: var(--layout);
+}
+@utility mb-layout {
+  margin-bottom: var(--layout);
+}
+
+@utility -mr-layout {
+  @apply -mr-4;
+}

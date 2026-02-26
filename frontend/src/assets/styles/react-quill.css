@@ -1,0 +1,73 @@
+.ql-editor {
+  min-height: 150px;
+}
+
+.ql-toolbar {
+  @apply !rounded-t-md;
+}
+
+.ql-container {
+  @apply !rounded-b-md;
+}
+
+.quill:focus-within {
+  @apply !ring-ring/50 rounded-md ring-[3px];
+}
+
+.quill:focus-within .ql-toolbar,
+.quill:focus-within .ql-container {
+  @apply !border-ring;
+}
+
+.quill.invalid:focus-within {
+  @apply !ring-destructive/20 dark:!ring-destructive/40 ring-[3px];
+}
+
+.quill.invalid .ql-toolbar,
+.quill.invalid .ql-container {
+  @apply !border-destructive;
+}
+
+.ql-toolbar,
+.ql-toolbar * {
+  @apply dark:!text-muted-foreground dark:!stroke-muted-foreground;
+}
+
+.ql-toolbar,
+.ql-toolbar .ql-active * {
+  @apply dark:!text-foreground dark:!stroke-foreground;
+}
+
+.react-quill-content strong {
+  @apply font-semibold;
+}
+
+.react-quill-content ol,
+.react-quill-content ul {
+  @apply !pl-8;
+}
+
+.react-quill-content li[data-list='ordered'] {
+  @apply list-decimal;
+}
+
+.react-quill-content li[data-list='bullet'] {
+  @apply list-disc;
+}
+
+.ql-align-center img {
+  @apply mx-auto;
+}
+
+.ql-align-right img {
+  @apply ml-auto;
+}
+
+.ql-align-left img {
+  @apply mr-auto;
+}
+
+.quill {
+  display: flex;
+  flex-direction: column;
+}

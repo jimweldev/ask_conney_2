@@ -1,0 +1,33 @@
+.with-fancybox body {
+  pointer-events: auto !important;
+}
+
+.f-carousel__toolbar__column.is-left {
+  flex-direction: column;
+}
+
+.f-carousel__toolbar__column.is-left > *:first-child {
+  border-radius: 10px 10px 0 0 !important;
+  overflow: hidden;
+}
+
+.f-carousel__toolbar__column.is-left > *:last-child {
+  border-radius: 0 0 10px 10px !important;
+  overflow: hidden;
+}
+
+.f-carousel__toolbar__column.is-right > *:first-child {
+  border-radius: 10px 0 0 10px !important;
+  overflow: hidden;
+}
+
+.f-carousel__toolbar__column.is-right > *:last-child {
+  border-radius: 0 10px 10px 0 !important;
+  overflow: hidden;
+}
+
+/* fancybox__slide */
+.has-pdf .f-html {
+  margin-top: 54px;
+  width: calc(100% - (54px * 2)) !important;
+}

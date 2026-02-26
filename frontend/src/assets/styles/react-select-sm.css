@@ -1,0 +1,93 @@
+.react-select-container-sm {
+  @apply self-start;
+}
+
+.react-select-sm-container {
+  @apply overflow-hidden rounded-xl;
+  overflow: visible;
+  background-color: transparent !important;
+}
+
+.react-select-sm__single-value {
+  @apply !text-card-foreground;
+}
+
+.react-select-sm__input-container {
+  @apply !text-foreground;
+}
+
+.react-select-sm__control {
+  @apply !border-input !min-h-7 !rounded-md !border !bg-transparent !text-xs !shadow-xs;
+  /* min-height: 35px !important; */
+  height: 100% !important;
+}
+
+.invalid .react-select-sm__control {
+  @apply !ring-destructive/20 dark:!ring-destructive/40 !border-destructive;
+}
+
+.react-select-sm__control--is-focused {
+  @apply !border-primary !ring-ring/50 !ring-[3px];
+  outline: none !important;
+}
+
+.react-select-sm__value-container {
+  @apply !py-0;
+}
+
+.react-select-sm__indicators {
+  height: auto !important;
+  @apply flex gap-1 pr-2;
+}
+
+.react-select-sm__indicators > div {
+  @apply !p-0;
+}
+
+.react-select-sm__indicators > div > svg {
+  @apply !text-muted-foreground !size-4;
+}
+
+.react-select-sm__indicator-separator {
+  @apply !bg-border hidden;
+}
+
+/* Scrollbar Styling */
+.react-select-sm__menu {
+  @apply !bg-card overflow-hidden rounded-md;
+}
+
+.react-select-sm__menu-list {
+  @apply !bg-card;
+}
+
+.react-select-sm__option {
+  @apply !px-3 !py-2 !text-sm;
+}
+
+.react-select-sm__option:active,
+.react-select-sm__option:hover,
+.react-select-sm__option--is-focused {
+  @apply !bg-accent !text-accent-foreground;
+}
+
+.react-select-sm__option--is-selected,
+.react-select-sm__option--is-selected:hover {
+  @apply !bg-primary !text-primary-foreground;
+}
+
+.react-select-sm__multi-value {
+  @apply text-[11px];
+}
+
+.react-select-sm__multi-value__remove {
+  @apply !bg-destructive !text-white;
+}
+
+.react-select-sm__multi-value svg {
+  @apply bg-destructive size-3;
+}
+
+.dark .react-select__multi-value__remove {
+  @apply text-black;
+}
