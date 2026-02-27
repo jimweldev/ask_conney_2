@@ -60,6 +60,7 @@ const ChatBotPage = () => {
   const [microphoneStatus, setMicrophoneStatus] =
     useState<MicrophoneStatus>('unknown');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const {
     transcript,
@@ -231,6 +232,13 @@ const ChatBotPage = () => {
     }
   }, [listening, microphoneStatus, resetTranscript]);
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'end',
+    });
+  }, [messages, isLoadingQuery]);
+
   const onSubmit = (data: z.infer<typeof FormSchema>) => {
     setIsLoadingQuery(true);
 
@@ -263,10 +271,13 @@ const ChatBotPage = () => {
         };
         setMessages(prev => [...prev, assistantMessage]);
       })
-      .catch(error => {
-        toast.error(error.response?.data?.message || 'An error occurred');
-        // Remove the user message if there was an error
-        setMessages(prev => prev.slice(0, -1));
+      .catch(_error => {
+        // Add assistant response to chat
+        const assistantMessage: Message = {
+          role: 'assistant',
+          content: 'Oops! Something went wrong. Please try again.',
+        };
+        setMessages(prev => [...prev, assistantMessage]);
       })
       .finally(() => {
         setIsLoadingQuery(false);
@@ -384,7 +395,7 @@ const ChatBotPage = () => {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4 p-4">
+                <div className="p-layout space-y-4 pb-0">
                   {messages.map((message, index) => (
                     <div
                       key={index}
@@ -440,6 +451,9 @@ const ChatBotPage = () => {
                       </div>
                     </div>
                   )}
+
+                  {/* Scroll anchor */}
+                  <div className="mt-layout" ref={messagesEndRef} />
                 </div>
               )}
             </CardBody>

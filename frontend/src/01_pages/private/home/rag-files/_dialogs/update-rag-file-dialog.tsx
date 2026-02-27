@@ -70,18 +70,24 @@ const UpdateRagFileDialog = ({
     if (selectedRagFile) {
       form.reset({
         title: selectedRagFile.title || '',
-        allowed_locations: selectedRagFile.allowed_locations?.map(l => ({
-          label: l,
-          value: l,
-        })),
-        allowed_positions: selectedRagFile.allowed_positions?.map(p => ({
-          label: p,
-          value: p,
-        })),
-        allowed_websites: selectedRagFile.allowed_websites?.map(w => ({
-          label: w,
-          value: w,
-        })),
+        allowed_locations: selectedRagFile.allowed_locations
+          ? selectedRagFile.allowed_locations.map(l => ({
+              label: l,
+              value: l,
+            }))
+          : [],
+        allowed_positions: selectedRagFile.allowed_positions
+          ? selectedRagFile.allowed_positions.map(p => ({
+              label: p,
+              value: p,
+            }))
+          : [],
+        allowed_websites: selectedRagFile.allowed_websites
+          ? selectedRagFile.allowed_websites.map(w => ({
+              label: w,
+              value: w,
+            }))
+          : [],
       });
     }
   }, [selectedRagFile, form]);

@@ -172,9 +172,9 @@ class RagFileController extends Controller {
             $allowedPositions = json_decode($request->allowed_positions, true);
             $allowedWebsites = json_decode($request->allowed_websites, true);
 
-            $data['allowed_locations'] = empty($allowedLocations) ? null : $allowedLocations;
-            $data['allowed_positions'] = empty($allowedPositions) ? null : $allowedPositions;
-            $data['allowed_websites'] = empty($allowedWebsites) ? null : $allowedWebsites;
+            $request['allowed_locations'] = empty($request->allowed_locations) ? null : $allowedLocations;
+            $request['allowed_positions'] = empty($request->allowed_positions) ? null : $allowedPositions;
+            $request['allowed_websites'] = empty($request->allowed_websites) ? null : $allowedWebsites;
 
             $record->update($request->all());
 
@@ -252,12 +252,6 @@ class RagFileController extends Controller {
             ->limit(5)
             ->get();
 
-        if ($topChunks->isEmpty()) {
-            return response()->json([
-                'message' => 'No relevant chunks found.',
-            ], 404);
-        }
-
         $context = '';
         foreach ($topChunks as $i => $chunk) {
             $context .= 'Context '.($i + 1).":\n";
@@ -268,6 +262,7 @@ class RagFileController extends Controller {
 
         return response()->json([
             'answer' => $answer,
+            'top_chunks' => $topChunks->pluck('id')->toArray(),
         ], 200);
     }
 }

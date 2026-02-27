@@ -26,7 +26,7 @@ class EmbedRagFileChunk implements ShouldQueue {
             return;
         }
 
-        $embeddings = AiHelper::generateEmbedding($chunk->content);
+        $embeddings = AiHelper::generateEmbeddings($chunk->content);
 
         $chunk->embeddings = $embeddings;
         $chunk->save();
