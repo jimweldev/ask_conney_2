@@ -29,6 +29,7 @@ import SystemDropdownPage from './01_pages/private/examples/forms/system-dropdow
 import TextareaPage from './01_pages/private/examples/forms/textarea-page';
 import DataTableKanbanPage from './01_pages/private/examples/kanban/kanban-page';
 import ChatBotPage from './01_pages/private/home/chat-bot/chat-bot-page';
+import RagActionsPage from './01_pages/private/home/rag-actions/rag-actions-page';
 import RagFilesPage from './01_pages/private/home/rag-files/rag-files-page';
 import GeneralPage from './01_pages/private/settings/general-page';
 import PasswordPage from './01_pages/private/settings/password/password-page';
@@ -65,6 +66,10 @@ const App = () => {
                   {
                     path: 'rag-files',
                     element: <RagFilesPage />,
+                  },
+                  {
+                    path: 'rag-actions',
+                    element: <RagActionsPage />,
                   },
                 ],
               },

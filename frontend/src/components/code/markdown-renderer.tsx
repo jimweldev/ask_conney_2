@@ -1,20 +1,23 @@
 import ReactMarkdown, { type Components } from 'react-markdown';
+import remarkBreaks from 'remark-breaks';
 import remarkGfm from 'remark-gfm';
 
 const MarkdownRenderer = ({ text }: { text: string }) => {
   const components: Components = {
     h1: ({ children }) => (
-      <h1 className="mt-4 mb-3 text-xl font-bold">{children}</h1>
+      <h1 className="mt-4 mb-3 text-xl font-bold last:mb-0">{children}</h1>
     ),
     h2: ({ children }) => (
-      <h2 className="mt-3 mb-2 text-lg font-semibold">{children}</h2>
+      <h2 className="mt-3 mb-2 text-lg font-semibold last:mb-0">{children}</h2>
     ),
     h3: ({ children }) => (
-      <h3 className="mt-3 mb-2 font-semibold">{children}</h3>
+      <h3 className="mt-3 mb-2 font-semibold last:mb-0">{children}</h3>
     ),
-    p: ({ children }) => <p className="mb-3 leading-relaxed">{children}</p>,
+    p: ({ children }) => (
+      <p className="mb-3 leading-relaxed last:mb-0">{children}</p>
+    ),
     strong: ({ children }) => (
-      <strong className="font-semibold">{children}</strong>
+      <strong className="font-semibold last:mb-0">{children}</strong>
     ),
     em: ({ children }) => <em className="italic">{children}</em>,
     ul: ({ children }) => (
@@ -39,7 +42,7 @@ const MarkdownRenderer = ({ text }: { text: string }) => {
       );
     },
     blockquote: ({ children }) => (
-      <blockquote className="my-3 border-l-4 border-gray-300 pl-4 italic">
+      <blockquote className="my-3 border-l-4 border-gray-300 pl-4 italic last:mb-0">
         {children}
       </blockquote>
     ),
@@ -87,7 +90,10 @@ const MarkdownRenderer = ({ text }: { text: string }) => {
   };
 
   return (
-    <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm, remarkBreaks]}
+      components={components}
+    >
       {text}
     </ReactMarkdown>
   );

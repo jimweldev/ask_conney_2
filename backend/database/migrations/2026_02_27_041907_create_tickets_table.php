@@ -9,12 +9,14 @@ return new class extends Migration {
      * Run the migrations.
      */
     public function up(): void {
-        Schema::create('rag_file_chunks', function (Blueprint $table) {
+        Schema::create('tickets', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('rag_file_id')->constrained('rag_files')->onDelete('cascade');
-            $table->integer('chunk_index');
-            $table->text('content');
-            $table->vector('embeddings', 768)->nullable()->index();
+            $table->string('title');
+            $table->text('description');
+            $table->string('priority')->default('medium');
+            $table->string('project');
+            $table->string('status')->default('open');
+            $table->foreignId('user_id')->nullable();
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
         });
@@ -24,6 +26,6 @@ return new class extends Migration {
      * Reverse the migrations.
      */
     public function down(): void {
-        Schema::dropIfExists('rag_file_chunks');
+        Schema::dropIfExists('tickets');
     }
 };

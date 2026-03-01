@@ -14,8 +14,10 @@ import SpeechRecognition, {
 } from 'react-speech-recognition';
 import { toast } from 'sonner';
 import z from 'zod';
+import type { ReactSelectOption } from '@/04_types/_common/react-select-option';
 import { mainInstance } from '@/07_instances/main-instance';
 import MarkdownRenderer from '@/components/code/markdown-renderer';
+import SystemDropdownSelect from '@/components/react-select/system-dropdown-select';
 import PageHeader from '@/components/typography/page-header';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -59,6 +61,9 @@ const ChatBotPage = () => {
   const [isLoadingQuery, setIsLoadingQuery] = useState(false);
   const [microphoneStatus, setMicrophoneStatus] =
     useState<MicrophoneStatus>('unknown');
+  const [locations, setLocations] = useState<ReactSelectOption[]>([]);
+  const [positions, setPositions] = useState<ReactSelectOption[]>([]);
+  const [websites, setWebsites] = useState<ReactSelectOption[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -250,6 +255,9 @@ const ChatBotPage = () => {
     const payload = {
       question: data.question,
       history: messages, // Send the entire conversation history
+      locations: locations.map(l => l.label),
+      positions: positions.map(p => p.label),
+      websites: websites.map(w => w.label),
     };
 
     form.reset({
@@ -354,10 +362,37 @@ const ChatBotPage = () => {
             autoComplete="off"
             className="flex h-full flex-col"
           >
-            <CardHeader className="border-b">
+            <CardHeader className="flex justify-between border-b">
               <div className="flex items-center gap-2">
                 <FaRobot className="bg-primary size-8 shrink-0 rounded-full p-1.5 text-white" />
                 <h4 className="font-semibold">Ask Conney</h4>
+              </div>
+
+              <div className="flex gap-2">
+                <SystemDropdownSelect
+                  isMulti
+                  module="Company"
+                  type="Location"
+                  placeholder="Select locations"
+                  onChange={setLocations}
+                  value={locations}
+                />
+                <SystemDropdownSelect
+                  isMulti
+                  module="Company"
+                  type="Position"
+                  placeholder="Select positions"
+                  onChange={setPositions}
+                  value={positions}
+                />
+                <SystemDropdownSelect
+                  isMulti
+                  module="Company"
+                  type="Website"
+                  placeholder="Select websites"
+                  onChange={setWebsites}
+                  value={websites}
+                />
               </div>
             </CardHeader>
 

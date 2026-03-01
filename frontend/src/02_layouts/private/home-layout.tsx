@@ -18,6 +18,11 @@ const HomeLayout = () => {
           url: '/rag-files',
           icon: FaHouse,
         },
+        {
+          name: 'Rag Actions',
+          url: '/rag-actions',
+          icon: FaHouse,
+        },
       ],
     },
   ];

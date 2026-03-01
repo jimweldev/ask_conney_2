@@ -14,6 +14,7 @@ use App\Http\Controllers\System\SystemDropdownModuleController;
 use App\Http\Controllers\System\SystemSettingController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\User\UserImageController;
+use App\Http\Controllers\Rag\RagActionController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('auth/login', [AuthController::class, 'loginWithEmail']);
@@ -140,4 +141,7 @@ Route::middleware('auth.middleware')->group(function () {
     // Rag Files
     Route::post('/rag/query', [RagFileController::class, 'query']);
     Route::resource('/rag/files', RagFileController::class);
+
+    // Rag Actions
+    Route::resource('/rag/actions', RagActionController::class);
 });
