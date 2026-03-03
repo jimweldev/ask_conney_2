@@ -38,7 +38,7 @@ const RagActionsPage = () => {
     { label: 'Name', column: 'name' },
     { label: 'Type', column: 'type' },
     { label: 'Target Table', column: 'target_table' },
-    { label: 'Keywords', column: 'keywords' },
+    { label: 'Description', column: 'description' },
     { label: 'Default Values', column: 'default_values' },
     { label: 'Created At', column: 'created_at', className: 'w-[200px]' },
     { label: 'Actions', className: 'w-[100px]' },
@@ -69,7 +69,7 @@ const RagActionsPage = () => {
                     <TableCell>{ragAction.name}</TableCell>
                     <TableCell>{ragAction.type}</TableCell>
                     <TableCell>{ragAction.target_table}</TableCell>
-                    <TableCell>{ragAction.keywords}</TableCell>
+                    <TableCell>{ragAction.description}</TableCell>
                     <TableCell>{ragAction.default_values}</TableCell>
                     <TableCell>
                       {getDateTimezone(ragAction.created_at, 'date_time')}

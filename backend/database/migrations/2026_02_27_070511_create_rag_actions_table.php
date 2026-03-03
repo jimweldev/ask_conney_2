@@ -15,8 +15,8 @@ return new class extends Migration {
             $table->string('name');
             $table->string('type');
             $table->string('target_table')->nullable();
-            $table->string('keywords')->nullable();
-            $table->string('default_values')->nullable();
+            $table->text('description')->nullable();
+            $table->json('default_values')->nullable();
             $table->softDeletes();
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
@@ -27,29 +27,15 @@ return new class extends Migration {
                 'name' => 'IT Helpdesk Support',
                 'type' => 'ticket',
                 'target_table' => 'tickets',
-                'keywords' => json_encode(['IT', 'keyboard', 'mouse', 'computer', 'printer']),
+                'description' => 'Network, Internet, System Unit, Login, Keyboard, Remote, Support, Mouse, Application Error, Connection, Remote Desktop, System Unit, Beep, Audio, Microsoft, Azure, Office, Activation, Inventory, Hardware, VPN, Virtual Private Network, Latency, Headset, Softphone, UPS, Terminate Access, Email, Station Relocation, Seat Reservation',
                 'default_values' => json_encode(['priority' => 'medium', 'project' => 'IT Helpdesk Support']),
             ],
             [
                 'name' => 'MegaTool Support',
                 'type' => 'ticket',
                 'target_table' => 'tickets',
-                'keywords' => json_encode(['website', 'web', 'MegaTool']),
+                'description' => 'Time Tracker, MegaTool Login Credential, Reset, Bugs, Errors',
                 'default_values' => json_encode(['priority' => 'medium', 'project' => 'MegaTool Support']),
-            ],
-            [
-                'name' => 'Connext Travel',
-                'type' => 'ticket',
-                'target_table' => 'tickets',
-                'keywords' => json_encode(['hotel', 'transportation', 'flight', 'booking']),
-                'default_values' => json_encode(['priority' => 'medium', 'project' => 'Connext Travel']),
-            ],
-            [
-                'name' => 'Payroll Dispute',
-                'type' => 'dispute',
-                'target_table' => 'disputes',
-                'keywords' => json_encode(['payroll', 'salary', 'pay', 'dispute']),
-                'default_values' => json_encode(['priority' => 'medium']),
             ],
         ]);
     }

@@ -75,6 +75,7 @@ class RagActionController extends Controller {
      */
     public function store(Request $request) {
         try {
+            $request['default_values'] = json_encode($request['default_values']);
             $record = RagAction::create($request->all());
             return response()->json($record, 201);
         } catch (\Exception $e) {

@@ -3,7 +3,7 @@ export type RagAction = {
   name?: string;
   type?: string;
   target_table?: string;
-  keywords?: string;
+  description?: string;
   default_values?: string;
   deleted_at?: string;
   created_at?: string;

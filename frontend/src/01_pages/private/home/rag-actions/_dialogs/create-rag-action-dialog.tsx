@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import ReactSelect from 'react-select/creatable';
+import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { mainInstance } from '@/07_instances/main-instance';
+import InputGroup from '@/components/input-group/input-group';
+import InputGroupText from '@/components/input-group/input-group-text';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -24,55 +25,81 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { cn } from '@/lib/utils';
-import {
-  createInputJsonSchema,
-  createReactSelectSchema,
-} from '@/lib/zod/zod-helpers';
 
-// Form validation schema
+/* ===============================
+   Schema
+================================ */
+
 const FormSchema = z.object({
   name: z.string().min(1, { message: 'Required' }),
   type: z.string().min(1, { message: 'Required' }),
   target_table: z.string().min(1, { message: 'Required' }),
-  keywords: z.array(createReactSelectSchema(false)),
-  default_values: createInputJsonSchema(),
+  description: z.string().min(1, { message: 'Required' }),
+  default_values: z.array(
+    z.object({
+      key: z.string().min(1, 'Key required'),
+      value: z.string().min(1, 'Value required'),
+    }),
+  ),
 });
 
-// Props
+type FormType = z.infer<typeof FormSchema>;
+
+/* ===============================
+   Props
+================================ */
+
 type CreateRagActionDialogProps = {
   open: boolean;
   setOpen: (value: boolean) => void;
   refetch: () => void;
 };
 
+/* ===============================
+   Component
+================================ */
+
 const CreateRagActionDialog = ({
   open,
   setOpen,
   refetch,
 }: CreateRagActionDialogProps) => {
-  const form = useForm<z.infer<typeof FormSchema>>({
+  const [isLoadingCreateItem, setIsLoadingCreateItem] = useState(false);
+
+  const form = useForm<FormType>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
       name: '',
       type: '',
       target_table: '',
-      keywords: [],
-      default_values: '',
+      description: '',
+      default_values: [],
     },
   });
 
-  const [isLoadingCreateItem, setIsLoadingCreateItem] = useState(false);
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: 'default_values',
+  });
 
-  const onSubmit = (data: z.infer<typeof FormSchema>) => {
-    const newData = {
+  /* ===============================
+     Submit
+  ================================ */
+
+  const onSubmit = (data: FormType) => {
+    // Convert array → JSON object
+    const formattedDefaultValues = Object.fromEntries(
+      data.default_values.map(item => [item.key, item.value]),
+    );
+
+    const payload = {
       ...data,
-      keywords: JSON.stringify(data.keywords.map(item => item.value)),
+      default_values: formattedDefaultValues,
     };
 
     setIsLoadingCreateItem(true);
 
-    toast.promise(mainInstance.post(`/rag/actions`, newData), {
+    toast.promise(mainInstance.post(`/rag/actions`, payload), {
       loading: 'Loading...',
       success: () => {
         form.reset();
@@ -86,21 +113,22 @@ const CreateRagActionDialog = ({
     });
   };
 
+  /* ===============================
+     Render
+  ================================ */
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent autoFocus>
         <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(d => onSubmit(d))}
-            autoComplete="off"
-          >
+          <form onSubmit={form.handleSubmit(onSubmit)} autoComplete="off">
             <DialogHeader>
               <DialogTitle>Create Rag Action</DialogTitle>
             </DialogHeader>
 
             <DialogBody>
               <div className="grid grid-cols-12 gap-3">
-                {/* Name Field */}
+                {/* Name */}
                 <FormField
                   control={form.control}
                   name="name"
@@ -114,7 +142,8 @@ const CreateRagActionDialog = ({
                     </FormItem>
                   )}
                 />
-                {/* Type Field */}
+
+                {/* Type */}
                 <FormField
                   control={form.control}
                   name="type"
@@ -128,7 +157,8 @@ const CreateRagActionDialog = ({
                     </FormItem>
                   )}
                 />
-                {/* Target Table Field */}
+
+                {/* Target Table */}
                 <FormField
                   control={form.control}
                   name="target_table"
@@ -142,37 +172,14 @@ const CreateRagActionDialog = ({
                     </FormItem>
                   )}
                 />
-                {/* Keywords Field */}
+
+                {/* Description */}
                 <FormField
                   control={form.control}
-                  name="keywords"
-                  render={({ field, fieldState }) => (
-                    <FormItem className="col-span-12">
-                      <FormLabel>Keywords</FormLabel>
-                      <FormControl>
-                        <ReactSelect
-                          isMulti
-                          className={cn(
-                            'react-select-container',
-                            fieldState.invalid ? 'invalid' : '',
-                          )}
-                          classNamePrefix="react-select"
-                          options={[]}
-                          value={field.value}
-                          onChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {/* Default Values Field */}
-                <FormField
-                  control={form.control}
-                  name="default_values"
+                  name="description"
                   render={({ field }) => (
                     <FormItem className="col-span-12">
-                      <FormLabel>Default Values</FormLabel>
+                      <FormLabel>Description</FormLabel>
                       <FormControl>
                         <Textarea {...field} />
                       </FormControl>
@@ -180,13 +187,60 @@ const CreateRagActionDialog = ({
                     </FormItem>
                   )}
                 />
+
+                {/* Default Values */}
+                <div className="col-span-12">
+                  <FormLabel>Default Values</FormLabel>
+
+                  {fields.map((item, index) => (
+                    <div key={item.id} className="mb-2 flex items-center gap-2">
+                      <InputGroup>
+                        <Input
+                          placeholder="Key"
+                          {...form.register(`default_values.${index}.key`)}
+                        />
+                        <InputGroupText>=</InputGroupText>
+                        <Input
+                          placeholder="Value"
+                          {...form.register(`default_values.${index}.value`)}
+                        />
+                      </InputGroup>
+
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => remove(index)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+
+                  <Button
+                    className="col-span-12"
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => append({ key: '', value: '' })}
+                  >
+                    Add Default Value
+                  </Button>
+
+                  <FormMessage />
+                </div>
               </div>
             </DialogBody>
 
             <DialogFooter className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+              >
                 Cancel
               </Button>
+
               <Button type="submit" disabled={isLoadingCreateItem}>
                 Submit
               </Button>

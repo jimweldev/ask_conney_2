@@ -29,7 +29,7 @@ const FormSchema = z.object({
   name: z.string().min(1, { message: 'Required' }),
   type: z.string().min(1, { message: 'Required' }),
   target_table: z.string().min(1, { message: 'Required' }),
-  keywords: z.string().min(1, { message: 'Required' }),
+  description: z.string().min(1, { message: 'Required' }),
   default_values: z.string().min(1, { message: 'Required' }),
 });
 
@@ -55,7 +55,7 @@ const UpdateRagActionDialog = ({
       name: '',
       type: '',
       target_table: '',
-      keywords: '',
+      description: '',
       default_values: '',
     },
   });
@@ -67,7 +67,7 @@ const UpdateRagActionDialog = ({
         name: selectedRagAction.name || '',
         type: selectedRagAction.type || '',
         target_table: selectedRagAction.target_table || '',
-        keywords: selectedRagAction.keywords || '',
+        description: selectedRagAction.description || '',
         default_values: selectedRagAction.default_values || '',
       });
     }
@@ -150,13 +150,13 @@ const UpdateRagActionDialog = ({
                     </FormItem>
                   )}
                 />
-                {/* Keywords Field */}
+                {/* Description Field */}
                 <FormField
                   control={form.control}
-                  name="keywords"
+                  name="description"
                   render={({ field }) => (
                     <FormItem className="col-span-12">
-                      <FormLabel>Keywords</FormLabel>
+                      <FormLabel>Description</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>

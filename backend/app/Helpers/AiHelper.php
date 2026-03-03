@@ -16,123 +16,98 @@ class AiHelper {
         return $embedding->embeddings[0];
     }
 
-    public static function detectIntentAndExtractData($question, $history = []) {
-        // 1️⃣ Format conversation
-        $conversation = '';
-        foreach ($history as $message) {
-            $role = $message['role'] === 'assistant' ? 'Assistant' : 'User';
-            $conversation .= "{$role}: {$message['content']}\n";
-        }
+    public static function detectIntentAndExtractData($question, $history = [])
+{
+    $conversation = '';
+    foreach ($history as $message) {
+        $role = $message['role'] === 'assistant' ? 'Assistant' : 'User';
+        $conversation .= "{$role}: {$message['content']}\n";
+    }
 
-        // 2️⃣ Match action from the actions table
-        $actions = RagAction::all();
-        $matchedAction = null;
+    $actions = RagAction::all();
 
-        foreach ($actions as $action) {
-            $keywords = json_decode($action->keywords, true) ?? [];
-            foreach ($keywords as $keyword) {
-                if (stripos($question, $keyword) !== false) {
-                    $matchedAction = $action;
-                    break 2;
-                }
-            }
-        }
+    $actionsList = $actions->map(fn($a) => [
+        'id' => $a->id,
+        'name' => $a->name,
+        'type' => $a->type,
+        'target_table' => $a->target_table,
+        'description' => $a->description,
+        'default_values' => json_decode($a->default_values, true),
+    ])->values()->toJson(JSON_PRETTY_PRINT);
 
-        // 3️⃣ Set defaults based on matched action
-        if ($matchedAction) {
-            $project = $matchedAction->name;
-            $table = $matchedAction->target_table;
-            $type = $matchedAction->type;
-            $defaults = json_decode($matchedAction->default_values, true) ?? [];
-        } else {
-            $project = null;
-            $table = 'tickets';
-            $type = 'ticket';
-            $defaults = ['priority' => 'medium'];
-        }
+    $prompt = <<<PROMPT
+You are an AI system for structured actions.
 
-        // 4️⃣ Build AI prompt using $conversation, $project, $table, $type, etc.
-        $prompt = <<<PROMPT
-You are an AI assistant that decides whether to perform an action and where the record should go.
+AVAILABLE ACTIONS (JSON):
+$actionsList
 
 RULES:
-- Never create a ticket/dispute without explicit user confirmation.
-- Detect type of request and assign a project/table:
-    - IT Helpdesk issues → "IT Helpdesk Support", table="tickets"
-    - Website issues → "MegaTool Support", table="tickets"
-    - Travel bookings → "Connext Travel", table="tickets"
-    - Payroll disputes → table="disputes"
-- First ask user if they want to create a record.
-- After user confirms, show a draft with details (title, priority if relevant, project/table) for final confirmation.
-- Return ONLY valid JSON.
+- Only use AVAILABLE ACTIONS.
+- Never create records without confirmation.
+- Do NOT invent new projects or tables.
+- Return valid JSON only, without explanations.
+- If nothing matches, return {"action":"none"}.
 
-Responses:
-
-1️⃣ User describes a problem, has NOT confirmed:
-{
-  "action": "ask_create_ticket",
-  "message": "It seems you are having a problem with <issue>. Do you want me to help you create a record?"
-}
-
-2️⃣ After user says yes, show draft for final confirmation:
-{
-  "action": "confirm_ticket",
-  "data": {
-    "title": "short title",
-    "description": "detailed description",
-    "priority": "low|medium|high",
-    "project": "project name if applicable",
-    "table": "tickets|disputes"
-  },
-  "message": "Here are the record details. Reply with 'yes' to confirm or 'no' to cancel.\n\n**Title**: <title>\n**Priority**: <priority>\n**Project**: <project>\n**Table**: <table>\n**Description**: <description>"
-}
-
-3️⃣ User confirms creation:
-{
-  "action": "create_ticket",
-  "data": {
-    "title": "short title",
-    "description": "detailed description",
-    "priority": "low|medium|high",
-    "project": "project name if applicable",
-    "table": "tickets|disputes"
-  }
-}
-
-4️⃣ If no action is required:
-{
-  "action": "none"
-}
-
-Conversation so far:
+Conversation:
 $conversation
 
 User message:
 $question
+
+Return one of:
+
+1) Ask confirmation:
+{
+  "action": "ask_create_ticket",
+  "selected_action_id": <id>,
+  "message": "..."
+}
+
+2) Show draft:
+{
+  "action": "confirm_ticket",
+  "selected_action_id": <id>,
+  "data": {
+    "title": "...",
+    "description": "...",
+    "priority": "low|medium|high",
+    "project": "...",
+    "table": "..."
+  }
+}
+
+3) Final creation:
+{
+  "action": "create_ticket",
+  "selected_action_id": <id>,
+  "data": { ... }
+}
+
+4) No action:
+{
+  "action": "none"
+}
 PROMPT;
 
-        $response = Gemini::generativeModel(
-            model: env('GEMINI_MODEL', 'gemini-2.5-flash-lite')
-        )->generateContent([$prompt]);
+    $response = Gemini::generativeModel(
+        model: env('GEMINI_MODEL', 'gemini-2.5-flash-lite')
+    )->generateContent([$prompt]);
 
-        // 5️⃣ Extract JSON from AI response
-        $text = trim($response->text());
-        $jsonStart = strpos($text, '{');
-        $jsonEnd = strrpos($text, '}');
+    $text = trim($response->text());
 
-        if ($jsonStart === false || $jsonEnd === false) {
-            return ['action' => 'none'];
-        }
+    preg_match('/\{.*\}/s', $text, $matches);
+    if (empty($matches[0])) return ['action' => 'none'];
 
-        $jsonString = substr($text, $jsonStart, $jsonEnd - $jsonStart + 1);
-        $decoded = json_decode($jsonString, true);
+    $decoded = json_decode($matches[0], true);
+    if (!is_array($decoded)) return ['action' => 'none'];
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            return ['action' => 'none'];
-        }
-
-        return $decoded;
+    // ✅ Validate selected action exists
+    if (!empty($decoded['selected_action_id']) && !$actions->firstWhere('id', $decoded['selected_action_id'])) {
+        return ['action' => 'none'];
     }
+
+    return $decoded;
+}
 
     public static function generateAnswer($question, $context, $history = []) {
         // Format previous conversation
