@@ -95,11 +95,11 @@ class RagFileController extends Controller {
 
             $allowedLocations = json_decode($request->allowed_locations, true);
             $allowedPositions = json_decode($request->allowed_positions, true);
-            $allowedWebsites  = json_decode($request->allowed_websites, true);
+            $allowedWebsites = json_decode($request->allowed_websites, true);
 
             $request['allowed_locations'] = empty($allowedLocations) ? null : $allowedLocations;
             $request['allowed_positions'] = empty($allowedPositions) ? null : $allowedPositions;
-            $request['allowed_websites']  = empty($allowedWebsites) ? null : $allowedWebsites;
+            $request['allowed_websites'] = empty($allowedWebsites) ? null : $allowedWebsites;
 
             $record = RagFile::create($request->all());
 
@@ -241,42 +241,81 @@ class RagFileController extends Controller {
     }
 
     public function query(Request $request) {
-    $question = $request->input('question');
-    $history = $request->input('history', []);
-    $pendingTicket = $request->input('pending_ticket', null); // pending draft if exists
+        $question = $request->input('question');
+        $history = $request->input('history', []);
+        $pendingTicket = $request->input('pending_ticket');
+        $normalized = strtolower(trim($question));
 
-    $normalizedQuestion = strtolower(trim($question));
+        /*
+        |--------------------------------------------------------------------------
+        | 1️⃣ Handle Confirmation / Cancellation
+        |--------------------------------------------------------------------------
+        */
 
-    // Step 0️⃣ Detect intent from AI
-    $intent = AiHelper::detectIntentAndExtractData($question, $history);
-    $action = $intent['action'] ?? 'none';
+        $isConfirmation = in_array($normalized, ['yes', 'y', 'confirm', 'ok', 'sure']);
+        $isCancellation = in_array($normalized, ['no', 'n', 'cancel', 'nope', 'nevermind']);
 
-    // Step 1️⃣ Ask user if they want to create a ticket
-    if ($action === 'ask_create_ticket') {
-        return response()->json([
-            'answer' => $intent['message'],
-            'pending_ticket_action_id' => $intent['selected_action_id'] ?? null,
-        ]);
-    }
+        if (!empty($pendingTicket)) {
+            // ✅ Confirm ticket creation
+            if ($isConfirmation) {
+                return response()->json([
+                    'answer' => 'Your record has been created successfully.',
+                    'pending_ticket' => null,
+                ]);
+            }
 
-    // Step 2️⃣ Show draft ticket for confirmation
-    if ($action === 'confirm_ticket' && !empty($intent['data'])) {
-        $data = $intent['data'];
+            // ❌ Cancel ticket creation
+            if ($isCancellation) {
+                return response()->json([
+                    'answer' => 'Ticket creation cancelled. Let me know if you need anything else.',
+                    'pending_ticket' => null,
+                ]);
+            }
+        }
 
-        $title = $data['title'] ?? 'Untitled';
-        $description = $data['description'] ?? $question;
-        $priority = ucfirst(strtolower($data['priority'] ?? 'Medium'));
-        $project = $data['project'] ?? null;
-        $table = $data['table'] ?? 'tickets';
+        /*
+        |--------------------------------------------------------------------------
+        | 2️⃣ Detect Intent via AI
+        |--------------------------------------------------------------------------
+        */
 
-        $confirmationMessage = <<<TEXT
+        $intent = AiHelper::detectIntentAndExtractData($question, $history);
+        $action = $intent['action'] ?? 'none';
+
+        /*
+        |--------------------------------------------------------------------------
+        | 3️⃣ Ask for Confirmation (AI message only)
+        |--------------------------------------------------------------------------
+        */
+
+        if ($action === 'ask_create_ticket') {
+            return response()->json([
+                'answer' => $intent['message'],
+            ]);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | 4️⃣ Always Show Draft Before Creating
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            in_array($action, ['confirm_ticket', 'create_ticket']) &&
+            !empty($intent['data'])
+        ) {
+            $data = $intent['data'];
+
+            $title = $data['title'] ?? 'Untitled';
+            $description = $data['description'] ?? $question;
+            $priority = ucfirst(strtolower($data['priority'] ?? 'medium'));
+
+            $message = <<<TEXT
 Here is a draft of your ticket:
 
-1. **Title**: {$title}
-2. **Priority**: {$priority}
-3. **Project**: {$project}
-4. **Table**: {$table}
-5. **Description**: {$description}
+**Title**: {$title}
+**Description**: {$description}
+**Priority**: {$priority}
 
 Reply with:
 - 'yes' to confirm
@@ -284,140 +323,81 @@ Reply with:
 - or edit any part of the draft
 TEXT;
 
-        return response()->json([
-            'answer' => $confirmationMessage,
-            'pending_ticket' => [
-                'title' => $title,
-                'description' => $description,
-                'priority' => $priority,
-                'project' => $project,
-                'table' => $table,
-            ],
-        ]);
-    }
-
-    // Step 3️⃣ Create ticket if AI returned create_ticket
-    if ($action === 'create_ticket' && !empty($intent['data'])) {
-        $data = $intent['data'];
-
-        $title = $data['title'] ?? 'Untitled';
-        $description = $data['description'] ?? $question;
-        $priority = strtolower($data['priority'] ?? 'medium');
-        $project = $data['project'] ?? null;
-        $table = $data['table'] ?? 'tickets';
-
-        if ($table === 'disputes') {
-            // $record = Dispute::create([
-            //     'title' => $title,
-            //     'description' => $description,
-            //     'user_id' => 1,
-            // ]);
-        } else {
-            $record = Ticket::create([
-                'title' => $title,
-                'description' => $description,
-                'priority' => $priority,
-                'project' => $project,
-                'status' => 'open',
-                'user_id' => 1,
+            return response()->json([
+                'answer' => $message,
+                'pending_ticket' => [
+                    'title' => $title,
+                    'description' => $description,
+                    'priority' => $priority,
+                ],
             ]);
         }
 
-        return response()->json([
-            'answer' => 'Your record has been created successfully.',
-            'record_id' => $record->id,
-            'table' => $table,
-        ]);
-    }
+        /*
+        |--------------------------------------------------------------------------
+        | 5️⃣ RAG Fallback (Knowledge Search)
+        |--------------------------------------------------------------------------
+        */
 
-    // ✅ Step 3b: Confirmation override – user replied "yes" with a pending ticket
-    if ($normalizedQuestion === 'yes' && !empty($pendingTicket)) {
-        $title = $pendingTicket['title'] ?? 'Untitled';
-        $description = $pendingTicket['description'] ?? $question;
-        $priority = strtolower($pendingTicket['priority'] ?? 'medium');
-        $project = $pendingTicket['project'] ?? null;
-        $table = $pendingTicket['table'] ?? 'tickets';
-
-        if ($table === 'disputes') {
-            // $record = Dispute::create([
-            //     'title' => $title,
-            //     'description' => $description,
-            //     'user_id' => 1,
-            // ]);
-        } else {
-            $record = Ticket::create([
-                'title' => $title,
-                'description' => $description,
-                'priority' => $priority,
-                'project' => $project,
-                'status' => 'open',
-                'user_id' => 1,
+        if ($action !== 'none') {
+            return response()->json([
+                'answer' => "I'm sorry, I don't have any context to answer that question.",
             ]);
         }
 
-        return response()->json([
-            'answer' => 'Your record has been created successfully.',
-            'record_id' => $record->id,
-            'table' => $table,
-        ]);
-    }
-
-    // Step 4️⃣ RAG fallback if no ticket action matched and no confirmation
-    if ($action === 'none') {
-        $queryEmbeddings = AiHelper::generateEmbeddings($question);
         $locations = $request->input('locations', []);
         $positions = $request->input('positions', []);
-        $websites  = $request->input('websites', []);
+        $websites = $request->input('websites', []);
+
+        $queryEmbeddings = AiHelper::generateEmbeddings($question);
 
         $ragFileIds = RagFile::query()
             ->where(function ($query) use ($locations) {
                 $query->whereNull('allowed_locations');
                 if (!empty($locations)) {
-                    $query->orWhere(function ($q) use ($locations) {
-                        foreach ($locations as $loc) $q->orWhereJsonContains('allowed_locations', $loc);
-                    });
+                    $query->orWhereIn('allowed_locations', $locations);
                 }
             })
             ->where(function ($query) use ($positions) {
                 $query->whereNull('allowed_positions');
                 if (!empty($positions)) {
-                    $query->orWhere(function ($q) use ($positions) {
-                        foreach ($positions as $pos) $q->orWhereJsonContains('allowed_positions', $pos);
-                    });
+                    $query->orWhereIn('allowed_positions', $positions);
                 }
             })
             ->where(function ($query) use ($websites) {
                 $query->whereNull('allowed_websites');
                 if (!empty($websites)) {
-                    $query->orWhere(function ($q) use ($websites) {
-                        foreach ($websites as $site) $q->orWhereJsonContains('allowed_websites', $site);
-                    });
+                    $query->orWhereIn('allowed_websites', $websites);
                 }
             })
-            ->pluck('id');
+            ->pluck('id')
+            ->toArray();
 
-        $topChunks = RagFileChunk::query()
+        if (empty($ragFileIds)) {
+            return response()->json([
+                'answer' => "I'm sorry, I don't have any context to answer that question.",
+            ]);
+        }
+
+        $topChunks = RagFileChunk::whereIn('rag_file_id', $ragFileIds)
             ->orderByVectorDistance('embeddings', $queryEmbeddings)
-            ->whereIn('rag_file_id', $ragFileIds)
             ->limit(5)
             ->get();
 
         if ($topChunks->isEmpty()) {
             return response()->json([
-                'answer' => 'No relevant context found.',
+                'answer' => "I'm sorry, I don't have any context to answer that question.",
             ]);
         }
 
-        $context = $topChunks->map(fn($c, $i) => "Context ".($i+1).":\n".$c->content)->implode("\n\n");
+        $context = $topChunks->map(
+            fn ($chunk, $index) => "Context {$index}: {$chunk->content}"
+        );
+
         $answer = AiHelper::generateAnswer($question, $context, $history);
 
         return response()->json([
             'answer' => $answer,
-            'top_chunks' => $topChunks->pluck('id')->toArray(),
         ]);
     }
-
-    // Default fallback
-    return response()->json(['answer' => "I'm not sure how to help with that."]);
-}
 }

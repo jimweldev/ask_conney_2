@@ -22,13 +22,7 @@ import PageHeader from '@/components/typography/page-header';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardFooter, CardHeader } from '@/components/ui/card';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 
 // Types for conversation messages matching the payload format
@@ -64,6 +58,7 @@ const ChatBotPage = () => {
   const [locations, setLocations] = useState<ReactSelectOption[]>([]);
   const [positions, setPositions] = useState<ReactSelectOption[]>([]);
   const [websites, setWebsites] = useState<ReactSelectOption[]>([]);
+  const [pendingTicket, setPendingTicket] = useState(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -255,6 +250,7 @@ const ChatBotPage = () => {
     const payload = {
       question: data.question,
       history: messages, // Send the entire conversation history
+      pending_ticket: pendingTicket,
       locations: locations.map(l => l.label),
       positions: positions.map(p => p.label),
       websites: websites.map(w => w.label),
@@ -272,18 +268,25 @@ const ChatBotPage = () => {
     mainInstance
       .post(`/rag/query`, payload)
       .then(response => {
-        // Add assistant response to chat
         const assistantMessage: Message = {
           role: 'assistant',
           content: response.data.answer,
         };
+
         setMessages(prev => [...prev, assistantMessage]);
+
+        // ✅ Save pending ticket if exists
+        if (response.data.pending_ticket) {
+          setPendingTicket(response.data.pending_ticket);
+        } else {
+          setPendingTicket(null);
+        }
       })
-      .catch(_error => {
+      .catch(error => {
         // Add assistant response to chat
         const assistantMessage: Message = {
           role: 'assistant',
-          content: 'Oops! Something went wrong. Please try again.',
+          content: error.response.data.error,
         };
         setMessages(prev => [...prev, assistantMessage]);
       })
@@ -523,7 +526,6 @@ const ChatBotPage = () => {
                           }}
                         />
                       </FormControl>
-                      <FormMessage />
                     </FormItem>
                   )}
                 />

@@ -5,6 +5,7 @@ use App\Http\Controllers\Common\AuthController;
 use App\Http\Controllers\Example\ExampleTaskController;
 use App\Http\Controllers\Mail\MailLogController;
 use App\Http\Controllers\Mail\MailTemplateController;
+use App\Http\Controllers\Rag\RagActionController;
 use App\Http\Controllers\Rag\RagFileController;
 use App\Http\Controllers\Rbac\RbacPermissionController;
 use App\Http\Controllers\Rbac\RbacRoleController;
@@ -14,7 +15,6 @@ use App\Http\Controllers\System\SystemDropdownModuleController;
 use App\Http\Controllers\System\SystemSettingController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\User\UserImageController;
-use App\Http\Controllers\Rag\RagActionController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('auth/login', [AuthController::class, 'loginWithEmail']);

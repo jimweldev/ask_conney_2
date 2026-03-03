@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Rag;
 
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Helpers\QueryHelper;
 use App\Helpers\DynamicLogger;
+use App\Helpers\QueryHelper;
+use App\Http\Controllers\Controller;
 use App\Models\Rag\RagAction;
+use Illuminate\Http\Request;
 
 class RagActionController extends Controller {
     private $logger;
@@ -77,6 +77,7 @@ class RagActionController extends Controller {
         try {
             $request['default_values'] = json_encode($request['default_values']);
             $record = RagAction::create($request->all());
+
             return response()->json($record, 201);
         } catch (\Exception $e) {
             return response()->json([
@@ -100,6 +101,7 @@ class RagActionController extends Controller {
             }
 
             $record->update($request->all());
+
             return response()->json($record, 200);
         } catch (\Exception $e) {
             return response()->json([
@@ -124,6 +126,7 @@ class RagActionController extends Controller {
 
             // Delete the record
             $record->delete();
+
             return response()->json($record, 200);
         } catch (\Exception $e) {
             return response()->json([
