@@ -39,5 +39,8 @@ class DatabaseSeeder extends Seeder {
         $this->call([
             ExampleTaskSeeder::class,
         ]);
+        $this->call([
+            RagSeeder::class,
+        ]);
     }
 }

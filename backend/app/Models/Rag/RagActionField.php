@@ -4,16 +4,11 @@ namespace App\Models\Rag;
 
 use Illuminate\Database\Eloquent\Model;
 
-class RagAction extends Model {
+class RagActionField extends Model {
     protected $guarded = [
         'id',
         'deleted_at',
         'created_at',
         'updated_at',
     ];
-
-    // fields
-    public function fields() {
-        return $this->hasMany(RagActionField::class);
-    }
 }

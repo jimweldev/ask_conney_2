@@ -18,34 +18,79 @@ class AiHelper {
 
     public static function detectIntentAndExtractData($question, $history = []) {
         $conversation = '';
+
         foreach ($history as $message) {
             $role = $message['role'] === 'assistant' ? 'Assistant' : 'User';
             $conversation .= "{$role}: {$message['content']}\n";
         }
 
-        $actions = RagAction::all();
+        /*
+        |--------------------------------------------------------------------------
+        | Load Actions WITH Fields + Notes
+        |--------------------------------------------------------------------------
+        */
 
-        $actionsList = $actions->map(fn ($a) => [
-            'id' => $a->id,
-            'name' => $a->name,
-            'description' => $a->description,
-            'default_values' => json_decode($a->default_values, true),
-        ])->values()->toJson(JSON_PRETTY_PRINT);
+        $actions = RagAction::with(['fields' => function ($q) {
+            $q->orderBy('order');
+        }])->get();
+
+        $actionsList = $actions->map(function ($action) {
+            return [
+                'id' => $action->id,
+                'name' => $action->name,
+                'description' => $action->description,
+                'endpoint' => $action->endpoint,
+                'notes' => $action->notes, // ✅ NEW
+                'fields' => $action->fields->map(function ($field) {
+                    return [
+                        'name' => $field->name,
+                        'type' => $field->type,
+                        'required' => $field->is_required,
+                        'default_value' => $field->default_value,
+                        'dropdown_options' => $field->dropdown_options
+                            ? json_decode($field->dropdown_options, true)
+                            : null,
+                    ];
+                })->values(),
+            ];
+        })->values()->toJson(JSON_PRETTY_PRINT);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Prompt (Notes-Aware + Dropdown-Safe)
+        |--------------------------------------------------------------------------
+        */
 
         $prompt = <<<PROMPT
-You are an AI system for structured actions.
+You are an AI system that creates structured tickets.
 
 AVAILABLE ACTIONS (JSON):
 $actionsList
 
-RULES:
+CRITICAL RULES:
 - Only use AVAILABLE ACTIONS.
-- Never create records without confirmation.
-- Do NOT invent new projects or tables.
-- Return valid JSON only.
-- Create the ticket as if you were the user.
-- Always improve the title and description.
+- Only use exact field names.
+- If a field type is "dropdown":
+    • You MUST select ONE value from dropdown_options.
+    • When asking the user, present dropdown choices as a numbered list.
+    • Make choices human-friendly:
+        - Convert to Title Case
+        - Replace "/" with " / "
+        - Replace "_" with space
+    • But when returning JSON, use the EXACT original dropdown value.
+- Respect the "notes" of each action.
+- Required fields must always be filled.
+- Never invent new dropdown values.
+- Always return VALID JSON only.
 - If nothing matches, return {"action":"none"}.
+
+When asking user for a dropdown choice, format like:
+
+Please choose the impact:
+1. Extensive / Widespread
+2. Client Imperative
+3. Client Down
+etc.
 
 Conversation:
 $conversation
@@ -53,7 +98,7 @@ $conversation
 User message:
 $question
 
-Return one of:
+Return ONE of:
 
 1) Ask confirmation:
 {
@@ -67,18 +112,17 @@ Return one of:
   "action": "confirm_ticket",
   "selected_action_id": <id>,
   "data": {
-    "title": "...",
-    "description": "...",
-    "priority": "low|medium|high",
-    "project": "...",
+    "<field_name>": "value"
   }
 }
 
-3) Suggest creation (WILL STILL REQUIRE CONFIRMATION):
+3) Suggest creation:
 {
   "action": "create_ticket",
   "selected_action_id": <id>,
-  "data": { ... }
+  "data": {
+    "<field_name>": "value"
+  }
 }
 
 4) No action:
@@ -94,16 +138,18 @@ PROMPT;
         $text = trim($response->text());
 
         preg_match('/\{.*\}/s', $text, $matches);
+
         if (empty($matches[0])) {
             return ['action' => 'none'];
         }
 
         $decoded = json_decode($matches[0], true);
+
         if (!is_array($decoded)) {
             return ['action' => 'none'];
         }
 
-        // Validate selected action exists
+        // Validate selected action
         if (!empty($decoded['selected_action_id']) &&
             !$actions->firstWhere('id', $decoded['selected_action_id'])) {
             return ['action' => 'none'];
