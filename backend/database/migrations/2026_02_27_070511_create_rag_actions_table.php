@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
     /**
@@ -13,10 +13,8 @@ return new class extends Migration {
         Schema::create('rag_actions', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('type');
-            $table->string('target_table')->nullable();
             $table->text('description')->nullable();
-            $table->json('default_values')->nullable();
+            $table->string('endpoint')->nullable();            
             $table->softDeletes();
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
@@ -25,17 +23,13 @@ return new class extends Migration {
         DB::table('rag_actions')->insert([
             [
                 'name' => 'IT Helpdesk Support',
-                'type' => 'ticket',
-                'target_table' => 'tickets',
                 'description' => 'Network, Internet, System Unit, Login, Keyboard, Remote, Support, Mouse, Application Error, Connection, Remote Desktop, System Unit, Beep, Audio, Microsoft, Azure, Office, Activation, Inventory, Hardware, VPN, Virtual Private Network, Latency, Headset, Softphone, UPS, Terminate Access, Email, Station Relocation, Seat Reservation',
-                'default_values' => json_encode(['priority' => 'medium', 'project' => 'IT Helpdesk Support']),
+                'endpoint' => 'https://test-megaform-api.connextglobal.com/ticketing-system/ticket'
             ],
             [
                 'name' => 'MegaTool Support',
-                'type' => 'ticket',
-                'target_table' => 'tickets',
                 'description' => 'Time Tracker, MegaTool Login Credential, Reset, Bugs, Errors',
-                'default_values' => json_encode(['priority' => 'medium', 'project' => 'MegaTool Support']),
+                'endpoint' => 'https://test-megaform-api.connextglobal.com/ticketing-system/ticket'
             ],
         ]);
     }
