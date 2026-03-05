@@ -18,6 +18,7 @@ class RagSeeder extends Seeder {
                 'description' => 'Network, Internet, System Unit, Login, Keyboard, Remote, Support, Mouse, Application Error, Connection, Remote Desktop, System Unit, Beep, Audio, Microsoft, Azure, Office, Activation, Inventory, Hardware, VPN, Virtual Private Network, Latency, Headset, Softphone, UPS, Terminate Access, Email, Station Relocation, Seat Reservation',
                 'endpoint' => 'https://test-megaform-api.connextglobal.com/ticketing-system/ticket/it',
                 'notes' => 'The `issue_summary` field is the title of the ticket and the `issue_description` field is the description of the ticket. Provide them base on the request of the user. Provide the most applicable impact base on the dropdown choices',
+                'instructions' => "On MegaTool, click the ticket button, Click 'create', click 'IT Helpdesk Support', fill up the form and click 'create' button",
             ]);
 
             RagActionField::insert([
@@ -109,6 +110,7 @@ class RagSeeder extends Seeder {
                 'description' => 'Time Tracker, MegaTool Login Credential, Reset, Bugs, Errors',
                 'endpoint' => 'https://test-megaform-api.connextglobal.com/ticketing-system/ticket/mt',
                 'notes' => 'The `issue_summary` field is the title of the ticket and the `issue_description` field is the description of the ticket. Provide them base on the request of the user. Provide the most applicable impact base on the dropdown choices',
+                'instructions' => "On MegaTool, click the ticket button, Click 'create', click 'MegaTool Support', fill up the form and click 'create' button"
             ]);
 
             RagActionField::insert([
