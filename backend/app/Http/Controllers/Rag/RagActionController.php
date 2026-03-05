@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Rag;
 
+use App\Helpers\AiHelper;
 use App\Helpers\DynamicLogger;
 use App\Helpers\QueryHelper;
 use App\Http\Controllers\Controller;
@@ -79,12 +80,15 @@ class RagActionController extends Controller {
         try {
             DB::beginTransaction();
 
+            $request['intent_embedding'] = AiHelper::generateEmbeddings($request->description);
+
             // Create the main rag action
             $ragAction = RagAction::create([
                 'name' => $request->name,
                 'description' => $request->description,
                 'endpoint' => $request->endpoint,
                 'notes' => $request->notes,
+                'intent_embedding' => $request->intent_embedding,
             ]);
 
             // Create the associated fields

@@ -39,15 +39,15 @@ class AuthController extends Controller {
     public function loginWithEmail(Request $request): JsonResponse {
         $user = User::where('email', $request->input('email'))->first();
 
-        $notification = new TeamsNotification;
-        $message = 'Data Update';
-        $data = [
-            'user_id' => 12345,
-            'action' => 'update',
-            'status' => 'success',
-            'timestamp' => date('Y-m-d H:i:s'),
-        ];
-        $notification->success()->sendJsonMessage($message, $data);
+        // $notification = new TeamsNotification;
+        // $message = 'Data Update';
+        // $data = [
+        //     'user_id' => 12345,
+        //     'action' => 'update',
+        //     'status' => 'success',
+        //     'timestamp' => date('Y-m-d H:i:s'),
+        // ];
+        // $notification->success()->sendJsonMessage($message, $data);
 
         if (!$user || !Hash::check($request->input('password'), $user->password)) {
             return response()->json(['message' => 'Invalid credentials'], 401);

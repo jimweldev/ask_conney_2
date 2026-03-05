@@ -58,7 +58,7 @@ const ChatBotPage = () => {
   const [locations, setLocations] = useState<ReactSelectOption[]>([]);
   const [positions, setPositions] = useState<ReactSelectOption[]>([]);
   const [websites, setWebsites] = useState<ReactSelectOption[]>([]);
-  const [pendingTicket, setPendingTicket] = useState(null);
+  const [ticketDraft, setTicketDraft] = useState(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -250,7 +250,7 @@ const ChatBotPage = () => {
     const payload = {
       question: data.question,
       history: messages, // Send the entire conversation history
-      pending_ticket: pendingTicket,
+      ticket_data: ticketDraft,
       locations: locations.map(l => l.label),
       positions: positions.map(p => p.label),
       websites: websites.map(w => w.label),
@@ -276,10 +276,10 @@ const ChatBotPage = () => {
         setMessages(prev => [...prev, assistantMessage]);
 
         // ✅ Save pending ticket if exists
-        if (response.data.pending_ticket) {
-          setPendingTicket(response.data.pending_ticket);
+        if (response.data.ticket_data) {
+          setTicketDraft(response.data.ticket_data);
         } else {
-          setPendingTicket(null);
+          setTicketDraft(null);
         }
       })
       .catch(error => {

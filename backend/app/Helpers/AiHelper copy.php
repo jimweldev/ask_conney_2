@@ -26,7 +26,7 @@ class AiHelper {
 
         /*
         |--------------------------------------------------------------------------
-        | Load Actions + Fields
+        | Load Actions WITH Fields + Notes
         |--------------------------------------------------------------------------
         */
 
@@ -40,8 +40,7 @@ class AiHelper {
                 'name' => $action->name,
                 'description' => $action->description,
                 'endpoint' => $action->endpoint,
-                'notes' => $action->notes,
-                'instructions' => $action->instructions,
+                'notes' => $action->notes, // ✅ NEW
                 'fields' => $action->fields->map(function ($field) {
                     return [
                         'name' => $field->name,
@@ -58,301 +57,75 @@ class AiHelper {
 
         /*
         |--------------------------------------------------------------------------
-        | PROMPT
+        | Prompt (Notes-Aware + Dropdown-Safe)
         |--------------------------------------------------------------------------
         */
 
         $prompt = <<<PROMPT
-You are an AI system that helps users create IT helpdesk tickets.
+You are an AI system that creates structured tickets.
 
 AVAILABLE ACTIONS (JSON):
 $actionsList
 
-------------------------------------------------
-MIXED INTENT RULE
-------------------------------------------------
+CRITICAL RULES:
+- Only use AVAILABLE ACTIONS.
+- Only use exact field names.
+- If a field type is "dropdown":
+    • You MUST select ONE value from dropdown_options.
+    • When asking the user, present dropdown choices as a numbered list.
+    • Make choices human-friendly:
+        - Convert to Title Case
+        - Replace "/" with " / "
+        - Replace "_" with space
+    • But when returning JSON, use the EXACT original dropdown value.
+- Respect the "notes" of each action.
+- Required fields must always be filled.
+- Never invent new dropdown values.
+- Always return VALID JSON only.
+- If nothing matches, return {"action":"none"}.
 
-Sometimes the user asks how to file a ticket AND describes a problem.
-
-Examples:
-- my keyboard is not working, how do I file a ticket
-- internet is down, how do I create a ticket
-- how do I submit a ticket? my laptop won't start
-
-In this case:
-
-1. Return action "ask"
-2. Provide the ticket instructions
-3. Mention the detected issue
-4. Ask the user if they want the AI to create the ticket
-
-Example message:
-
-To file an IT Helpdesk Support ticket, follow these steps:
-
-<instructions>
-
-It seems you are experiencing an issue with <detected_issue>.
-Would you like me to create a ticket for you?
-
-
-------------------------------------------------
-INTENT TYPES
-------------------------------------------------
-
-1. INSTRUCTION INTENT
-
-The user is asking how to file or create a ticket.
-
-Examples:
-- how do I file a ticket
-- how can I create a helpdesk ticket
-- what are the steps to submit a ticket
-
-If this intent is detected AND no issue is mentioned:
-
-- Return action "ask"
-- Provide the instructions
-- Do NOT collect ticket fields
-
-
-------------------------------------------------
-2. TICKET CREATION INTENT
-
-The user is reporting a problem or asking for help with an issue.
-
-Examples:
-- my keyboard is not working
-- I cannot login
-- my internet is down
-- I need help installing an application
-
-If detected:
-
-- Select the most appropriate action
-- Start building the ticket
-
-
-------------------------------------------------
-SMART AUTO-FILL RULES
-------------------------------------------------
-
-When a user describes a problem, you MUST attempt to auto-fill fields.
-
-Use these rules:
-
-1. If the issue clearly matches a dropdown value, automatically use it.
-
-Examples:
-
-"keyboard not working"
-issue = KEYBOARD
-
-"mouse not working"
-issue = MOUSE
-
-"internet is down"
-issue = NO INTERNET
-
-"vpn not connecting"
-issue = VPN
-
-
-2. Automatically determine IMPACT when obvious.
-
-Examples:
-
-Single user hardware issue:
-impact = station down - alternative available
-
-Application bug affecting one user:
-impact = operational with work around
-
-Office internet down:
-impact = extensive/widespread
-
-Network disconnected:
-impact = network down
-
-
-3. Urgency rules:
-
-Office-wide outage → CRITICAL  
-Multiple users affected → HIGH  
-Single user hardware issue → MEDIUM  
-Minor inconvenience → LOW
-
-
-4. If HIGH confidence exists, you MUST auto-fill the value.
-
-Do NOT ask the user for fields that can be inferred.
-
-Only ask the user when confidence is LOW.
-
-
-Example:
-
-User: "my keyboard is not working"
-
-Return:
-
-{
-  "action": "update",
-  "selected_action_id": 1,
-  "data": {
-    "issue": "KEYBOARD",
-    "impact": "station down - alternative available",
-    "urgency": "MEDIUM",
-    "issue_summary": "Keyboard not working",
-    "issue_description": "My keyboard is not working",
-  }
-}
-
-------------------------------------------------
-FIELD COLLECTION RULES
-------------------------------------------------
-
-- Required fields must be collected before ticket creation.
-- Ask only ONE missing field at a time.
-- Never ask fields that already have values.
-- Use default_value if available.
-
-
-------------------------------------------------
-DROPDOWN RULES
-------------------------------------------------
-
-If a field type is "dropdown":
-
-• You MUST select ONE value from dropdown_options.
-
-• When asking the user, present dropdown choices as a numbered list.
-
-Example:
+When asking user for a dropdown choice, format like:
 
 Please choose the impact:
-
 1. Extensive / Widespread
 2. Client Imperative
 3. Client Down
-4. Business Essential
+etc.
 
-IMPORTANT:
-
-When returning JSON, always use the EXACT original dropdown value.
-
-
-------------------------------------------------
-CONFIRMATION RULE
-------------------------------------------------
-
-If ALL required fields are filled:
-
-Return action "confirm".
-
-The user must confirm before creating the ticket.
-
-------------------------------------------------
-CANCEL INTENT
-------------------------------------------------
-
-If the user wants to stop or cancel the ticket process.
-
-Examples:
-- cancel
-- never mind
-- stop
-- abort
-- forget it
-- cancel the ticket
-- cancel this request
-
-Return:
-
-{
-  "action": "cancel"
-}
-
-Do NOT include ticket fields.
-
-
-------------------------------------------------
-STRICT RULES
-------------------------------------------------
-
-- Only use AVAILABLE ACTIONS
-- Only use exact field names
-- Never invent dropdown values
-- Always return VALID JSON
-- Do not include explanations outside JSON
-
-If nothing matches return:
-
-{
-  "action": "none"
-}
-
-
-------------------------------------------------
-CONVERSATION
-------------------------------------------------
-
+Conversation:
 $conversation
 
-
-------------------------------------------------
-USER MESSAGE
-------------------------------------------------
-
+User message:
 $question
 
+Return ONE of:
 
-------------------------------------------------
-RESPONSE FORMAT
-------------------------------------------------
-
-Return ONLY ONE JSON object.
-
-ASK
+1) Ask confirmation:
 {
-  "action": "ask",
+  "action": "ask_create_ticket",
   "selected_action_id": <id>,
   "message": "..."
 }
 
-CONFIRM
+2) Show draft:
 {
-  "action": "confirm",
+  "action": "confirm_ticket",
   "selected_action_id": <id>,
   "data": {
     "<field_name>": "value"
   }
 }
 
-UPDATE
+3) Suggest creation:
 {
-  "action": "update",
+  "action": "create_ticket",
   "selected_action_id": <id>,
   "data": {
     "<field_name>": "value"
   }
 }
 
-CREATE
-{
-  "action": "create",
-  "selected_action_id": <id>,
-  "data": {
-    "<field_name>": "value"
-  }
-}
-
-CANCEL
-{
-  "action": "cancel"
-}
-
-NONE
+4) No action:
 {
   "action": "none"
 }
@@ -376,6 +149,7 @@ PROMPT;
             return ['action' => 'none'];
         }
 
+        // Validate selected action
         if (!empty($decoded['selected_action_id']) &&
             !$actions->firstWhere('id', $decoded['selected_action_id'])) {
             return ['action' => 'none'];
