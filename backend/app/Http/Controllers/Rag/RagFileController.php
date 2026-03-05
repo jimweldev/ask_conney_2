@@ -4,7 +4,10 @@ namespace App\Http\Controllers\Rag;
 
 use App\Helpers\AiHelper;
 use App\Helpers\DynamicLogger;
+use App\Helpers\QueryHelper;
+use App\Helpers\S3Helper;
 use App\Http\Controllers\Controller;
+use App\Jobs\Rag\EmbedRagFileChunk;
 use App\Models\Rag\RagFile;
 use App\Models\Rag\RagFileChunk;
 use Illuminate\Http\Request;
@@ -16,9 +19,275 @@ class RagFileController extends Controller {
         $this->logger = DynamicLogger::create('laravel.log', 'local');
     }
 
+    /**
+     * Display a paginated list of records with optional filtering and search.
+     */
+    public function index(Request $request) {
+        $queryParams = $request->all();
+
+        try {
+            $query = RagFile::query();
+            $type = 'paginate';
+            QueryHelper::apply($query, $queryParams, $type);
+
+            if ($request->has('search')) {
+                $search = $request->input('search');
+                $query->where(function ($query) use ($search) {
+                    $query->where('id', 'LIKE', '%'.$search.'%');
+                });
+            }
+
+            $totalRecords = $query->count();
+            $limit = $request->input('limit', 10);
+            $page = $request->input('page', 1);
+            QueryHelper::applyLimitAndOffset($query, $limit, $page);
+
+            $records = $query->get();
+
+            return response()->json([
+                'records' => $records,
+                'meta' => [
+                    'total_records' => $totalRecords,
+                    'total_pages' => ceil($totalRecords / $limit),
+                ],
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred',
+                'error' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * Display the specified record.
+     */
+    public function show($id) {
+        $record = RagFile::where('id', $id)->first();
+
+        if (!$record) {
+            return response()->json([
+                'message' => 'Record not found.',
+            ], 404);
+        }
+
+        return response()->json($record, 200);
+    }
+
+    /**
+     * Store a newly created record in storage.
+     */
+    public function store(Request $request) {
+        try {
+            $filePath = S3Helper::uploadFile($request->file('file'), 'rag_files');
+
+            if (!$filePath) {
+                return response()->json([
+                    'message' => 'Failed to upload file.',
+                ], 400);
+            }
+
+            // Merge unique files
+            $request->merge([
+                'file_path' => $filePath,
+            ]);
+
+            $allowedLocations = json_decode($request->allowed_locations, true);
+            $allowedPositions = json_decode($request->allowed_positions, true);
+            $allowedWebsites = json_decode($request->allowed_websites, true);
+
+            $request['allowed_locations'] = empty($allowedLocations) ? null : $allowedLocations;
+            $request['allowed_positions'] = empty($allowedPositions) ? null : $allowedPositions;
+            $request['allowed_websites'] = empty($allowedWebsites) ? null : $allowedWebsites;
+
+            $record = RagFile::create($request->all());
+
+            $extractedText = S3Helper::extractFileContent($record->file_path);
+
+            $chunks = array_filter(preg_split('/\s+/', $extractedText));
+            $chunkSize = 500;
+            $chunkIndex = 0;
+            $createdChunkIds = [];
+
+            for ($i = 0; $i < count($chunks); $i += $chunkSize) {
+                $chunkContent = implode(' ', array_slice($chunks, $i, $chunkSize));
+
+                $chunk = RagFileChunk::create([
+                    'rag_file_id' => $record->id,
+                    'chunk_index' => $chunkIndex,
+                    'content' => $chunkContent,
+                ]);
+
+                $createdChunkIds[] = $chunk->id;
+                $chunkIndex++;
+            }
+
+            // Dispatch embedding jobs after commit
+            foreach ($createdChunkIds as $chunkId) {
+                EmbedRagFileChunk::dispatch($chunkId);
+            }
+
+            return response()->json($record, 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred',
+                'error' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * Update the specified record in storage.
+     */
+    public function update(Request $request, $id) {
+        try {
+            $record = RagFile::find($id);
+
+            if (!$record) {
+                return response()->json([
+                    'message' => 'Record not found.',
+                ], 404);
+            }
+
+            // if has file
+            if ($request->hasFile('file')) {
+                // delete the current file chunks
+                $record->ragFileChunks()->delete();
+
+                $filePath = S3Helper::uploadFile($request->file('file'), 'rag_files');
+
+                if (!$filePath) {
+                    return response()->json([
+                        'message' => 'Failed to upload file.',
+                    ], 400);
+                }
+
+                $request->merge([
+                    'file_path' => $filePath,
+                ]);
+            }
+
+            $allowedLocations = json_decode($request->allowed_locations, true);
+            $allowedPositions = json_decode($request->allowed_positions, true);
+            $allowedWebsites = json_decode($request->allowed_websites, true);
+
+            $request['allowed_locations'] = empty($allowedLocations) ? null : $allowedLocations;
+            $request['allowed_positions'] = empty($allowedPositions) ? null : $allowedPositions;
+            $request['allowed_websites'] = empty($allowedWebsites) ? null : $allowedWebsites;
+
+            $record->update($request->all());
+
+            // if has file
+            if ($request->hasFile('file')) {
+                $extractedText = S3Helper::extractFileContent($record->file_path);
+
+                $chunks = array_filter(preg_split('/\s+/', $extractedText));
+                $chunkSize = 500;
+                $chunkIndex = 0;
+                $createdChunkIds = [];
+
+                for ($i = 0; $i < count($chunks); $i += $chunkSize) {
+                    $chunkContent = implode(' ', array_slice($chunks, $i, $chunkSize));
+
+                    $chunk = RagFileChunk::create([
+                        'rag_file_id' => $record->id,
+                        'chunk_index' => $chunkIndex,
+                        'content' => $chunkContent,
+                    ]);
+
+                    $createdChunkIds[] = $chunk->id;
+                    $chunkIndex++;
+                }
+
+                // Dispatch embedding jobs after commit
+                foreach ($createdChunkIds as $chunkId) {
+                    EmbedRagFileChunk::dispatch($chunkId);
+                }
+            }
+
+            return response()->json($record, 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred',
+                'error' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * Remove the specified record from storage.
+     */
+    public function destroy($id) {
+        try {
+            $record = RagFile::find($id);
+
+            if (!$record) {
+                return response()->json([
+                    'message' => 'Record not found.',
+                ], 404);
+            }
+
+            // Delete the record
+            $record->delete();
+
+            return response()->json($record, 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred',
+                'error' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
     public function query(Request $request) {
         $question = $request->input('question');
         $history = $request->input('history', []);
+        $ticketData = $request->input('ticket_data', []);
+        $state = $request->input('state', []);
+
+        /*
+        |--------------------------------------------------------------------------
+        | STEP 1 — Handle Ticket Offer Confirmation
+        |--------------------------------------------------------------------------
+        */
+
+        if (!empty($state['ticket_offer_pending'])) {
+            $yesWords = ['yes', 'yeah', 'yep', 'sure', 'ok', 'okay', 'go ahead', 'please do', 'create it'];
+
+            if (in_array(strtolower(trim($question)), $yesWords)) {
+                $intent = AiHelper::detectIntentAndExtractData(
+                    $state['detected_issue_message'],
+                    $history
+                );
+
+                if (($intent['action'] ?? null) === 'update') {
+                    return response()->json([
+                        'type' => 'update',
+                        'ticket_data' => $intent['data'],
+                        'state' => [
+                            'ticket_offer_pending' => false,
+                        ],
+                        'answer' => $this->formatTicketDraft($intent['data']),
+                    ]);
+                }
+            }
+
+            if (strtolower(trim($question)) === 'no') {
+                return response()->json([
+                    'type' => 'message',
+                    'state' => [
+                        'ticket_offer_pending' => false,
+                    ],
+                    'answer' => 'Okay, I will not create a ticket. Let me know if you need help with anything else.',
+                ]);
+            }
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | STEP 2 — AI Intent Detection
+        |--------------------------------------------------------------------------
+        */
 
         $intent = AiHelper::detectIntentAndExtractData($question, $history);
 
@@ -30,11 +299,35 @@ class RagFileController extends Controller {
 
         /*
         |--------------------------------------------------------------------------
-        | TICKET FLOW
+        | STEP 3 — Ticket Offer Handling
+        |--------------------------------------------------------------------------
+        */
+
+        if ($action === 'ask' && str_contains(strtolower($message), 'create an it helpdesk ticket')) {
+            return response()->json([
+                'type' => 'message',
+                'state' => [
+                    'ticket_offer_pending' => true,
+                    'detected_issue_message' => $question,
+                ],
+                'answer' => $message,
+            ]);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | STEP 4 — Ticket Flow
         |--------------------------------------------------------------------------
         */
 
         if ($action !== 'none') {
+            if ($action === 'greeting') {
+                return response()->json([
+                    'type' => 'message',
+                    'answer' => $message ?? 'Hello! How can I help you today?',
+                ]);
+            }
+
             if ($action === 'ask') {
                 return response()->json([
                     'type' => 'message',
@@ -45,8 +338,8 @@ class RagFileController extends Controller {
             if ($action === 'confirm') {
                 return response()->json([
                     'type' => 'confirm',
-                    'ticket_data' => null,
-                    'answer' => $message,
+                    'ticket_data' => $data,
+                    'answer' => $this->formatTicketDraft($data),
                 ]);
             }
 
@@ -59,20 +352,16 @@ class RagFileController extends Controller {
             }
 
             if ($action === 'update') {
-                $existingTicket = $request->input('ticket_data');
-
-                if (!is_array($existingTicket)) {
-                    $existingTicket = [];
+                if (!is_array($ticketData)) {
+                    $ticketData = [];
                 }
 
-                $mergedData = array_merge($existingTicket, $data ?? []);
-
-                $answer = $this->formatTicketDraft($mergedData);
+                $mergedData = array_merge($ticketData, $data ?? []);
 
                 return response()->json([
                     'type' => 'update',
                     'ticket_data' => $mergedData,
-                    'answer' => $answer,
+                    'answer' => $this->formatTicketDraft($mergedData),
                 ]);
             }
 
@@ -87,7 +376,7 @@ class RagFileController extends Controller {
 
         /*
         |--------------------------------------------------------------------------
-        | KNOWLEDGE SEARCH (RAG)
+        | STEP 5 — RAG Knowledge Search (unchanged)
         |--------------------------------------------------------------------------
         */
 
@@ -101,22 +390,22 @@ class RagFileController extends Controller {
             ->where(function ($query) use ($locations) {
                 $query->whereNull('allowed_locations');
 
-                if (!empty($locations)) {
-                    $query->orWhereIn('allowed_locations', $locations);
+                foreach ($locations as $location) {
+                    $query->orWhereJsonContains('allowed_locations', $location);
                 }
             })
             ->where(function ($query) use ($positions) {
                 $query->whereNull('allowed_positions');
 
-                if (!empty($positions)) {
-                    $query->orWhereIn('allowed_positions', $positions);
+                foreach ($positions as $position) {
+                    $query->orWhereJsonContains('allowed_positions', $position);
                 }
             })
             ->where(function ($query) use ($websites) {
                 $query->whereNull('allowed_websites');
 
-                if (!empty($websites)) {
-                    $query->orWhereIn('allowed_websites', $websites);
+                foreach ($websites as $website) {
+                    $query->orWhereJsonContains('allowed_websites', $website);
                 }
             })
             ->pluck('id')
@@ -124,6 +413,7 @@ class RagFileController extends Controller {
 
         if (empty($ragFileIds)) {
             return response()->json([
+                'type' => 'knowledge',
                 'answer' => "I'm sorry, I don't have enough information to answer that.",
             ]);
         }
@@ -135,6 +425,7 @@ class RagFileController extends Controller {
 
         if ($topChunks->isEmpty()) {
             return response()->json([
+                'type' => 'knowledge',
                 'answer' => "I'm sorry, I don't have enough information to answer that.",
             ]);
         }

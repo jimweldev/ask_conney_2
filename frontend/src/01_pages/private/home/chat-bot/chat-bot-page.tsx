@@ -1,18 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import {
-  FaArrowUp,
-  FaMicrophone,
-  FaMicrophoneSlash,
-  FaRobot,
-  FaStop,
-  FaUser,
-} from 'react-icons/fa6';
-import SpeechRecognition, {
-  useSpeechRecognition,
-} from 'react-speech-recognition';
-import { toast } from 'sonner';
+import { FaArrowUp, FaRobot, FaUser } from 'react-icons/fa6';
 import z from 'zod';
 import type { ReactSelectOption } from '@/04_types/_common/react-select-option';
 import { mainInstance } from '@/07_instances/main-instance';
@@ -40,34 +29,25 @@ const FormSchema = z.object({
 const EXAMPLE_QUESTIONS = [
   'What is No Call No Show?',
   'How do I file a Paid-Time-Off?',
-  'Who do I file a ticket?',
+  'What is Connext?',
 ];
 
-type MicrophoneStatus =
-  | 'granted'
-  | 'denied'
-  | 'not-found'
-  | 'unknown'
-  | 'unsupported';
+type FailedQuery = {
+  question: string;
+  timestamp: number;
+};
 
 const ChatBotPage = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoadingQuery, setIsLoadingQuery] = useState(false);
-  const [microphoneStatus, setMicrophoneStatus] =
-    useState<MicrophoneStatus>('unknown');
   const [locations, setLocations] = useState<ReactSelectOption[]>([]);
   const [positions, setPositions] = useState<ReactSelectOption[]>([]);
   const [websites, setWebsites] = useState<ReactSelectOption[]>([]);
   const [ticketDraft, setTicketDraft] = useState(null);
+  const [conversationState, setConversationState] = useState(null);
+  const [failedQuery, setFailedQuery] = useState<FailedQuery | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-
-  const {
-    transcript,
-    listening,
-    resetTranscript,
-    browserSupportsSpeechRecognition,
-  } = useSpeechRecognition();
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -76,162 +56,6 @@ const ChatBotPage = () => {
     },
   });
 
-  // Check if speech recognition is supported
-  useEffect(() => {
-    if (!browserSupportsSpeechRecognition) {
-      setMicrophoneStatus('unsupported');
-      toast.warning(
-        'Speech recognition is not supported in your browser. You can still type your questions.',
-      );
-    }
-  }, [browserSupportsSpeechRecognition]);
-
-  // Update form value when transcript changes
-  useEffect(() => {
-    if (transcript) {
-      form.setValue('question', transcript);
-      // Auto-adjust textarea height
-      if (textareaRef.current) {
-        textareaRef.current.style.height = 'auto';
-        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
-      }
-    }
-  }, [transcript, form]);
-
-  // Check microphone permission on mount
-  useEffect(() => {
-    if (browserSupportsSpeechRecognition) {
-      checkMicrophoneAvailability();
-    }
-  }, [browserSupportsSpeechRecognition]);
-
-  const checkMicrophoneAvailability = async () => {
-    try {
-      // First check if there are any audio devices
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const hasMicrophone = devices.some(
-        device => device.kind === 'audioinput',
-      );
-
-      if (!hasMicrophone) {
-        setMicrophoneStatus('not-found');
-        return;
-      }
-
-      // Check permission status
-      const permissionStatus = await navigator.permissions.query({
-        name: 'microphone' as PermissionName,
-      });
-
-      setMicrophoneStatus(permissionStatus.state as MicrophoneStatus);
-
-      // Listen for permission changes
-      permissionStatus.onchange = () => {
-        setMicrophoneStatus(permissionStatus.state as MicrophoneStatus);
-      };
-    } catch (_error) {
-      // Permissions API not supported, try a different approach
-      try {
-        // Try to get permission without prompting
-        const stream = await navigator.mediaDevices
-          .getUserMedia({ audio: true })
-          .catch(() => null);
-
-        if (stream) {
-          stream.getTracks().forEach(track => track.stop());
-          setMicrophoneStatus('granted');
-        } else {
-          setMicrophoneStatus('denied');
-        }
-      } catch {
-        setMicrophoneStatus('unknown');
-      }
-    }
-  };
-
-  const requestMicrophonePermission = async () => {
-    try {
-      // This will trigger the browser's permission prompt
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-      // Stop all tracks immediately since we don't need the stream
-      stream.getTracks().forEach(track => track.stop());
-
-      setMicrophoneStatus('granted');
-      toast.success('Microphone access granted!');
-      return true;
-    } catch (error) {
-      console.error('Microphone permission error:', error);
-
-      if (error instanceof DOMException) {
-        if (error.name === 'NotAllowedError') {
-          setMicrophoneStatus('denied');
-          toast.error(
-            'Microphone access denied. Please allow microphone access in your browser settings.',
-          );
-        } else if (error.name === 'NotFoundError') {
-          setMicrophoneStatus('not-found');
-          toast.error(
-            'No microphone found. Please connect a microphone and try again.',
-          );
-        } else {
-          setMicrophoneStatus('unknown');
-          toast.error(
-            'Could not access microphone. Please check your device settings.',
-          );
-        }
-      }
-      return false;
-    }
-  };
-
-  const toggleListening = useCallback(async () => {
-    if (listening) {
-      SpeechRecognition.stopListening();
-      toast.info('Voice input stopped');
-      return;
-    }
-
-    // Handle different microphone statuses
-    if (microphoneStatus === 'not-found') {
-      toast.error(
-        'No microphone detected. Please connect a microphone and try again.',
-      );
-      return;
-    }
-
-    if (microphoneStatus === 'denied') {
-      toast.error(
-        'Microphone access is blocked. Please enable it in your browser settings.',
-      );
-      return;
-    }
-
-    if (microphoneStatus === 'unsupported') {
-      toast.error('Speech recognition is not supported in your browser.');
-      return;
-    }
-
-    // If status is unknown or not granted, request permission
-    if (microphoneStatus !== 'granted') {
-      const granted = await requestMicrophonePermission();
-      if (!granted) return;
-    }
-
-    try {
-      resetTranscript();
-      await SpeechRecognition.startListening({
-        continuous: true,
-        language: 'en-US',
-        interimResults: true,
-      });
-      toast.info('Listening... Speak your question');
-    } catch (error) {
-      console.error('Speech recognition error:', error);
-      toast.error('Failed to start speech recognition. Please try again.');
-    }
-  }, [listening, microphoneStatus, resetTranscript]);
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
       behavior: 'smooth',
@@ -239,22 +63,73 @@ const ChatBotPage = () => {
     });
   }, [messages, isLoadingQuery]);
 
-  const onSubmit = (data: z.infer<typeof FormSchema>) => {
+  const executeQuery = (question: string) => {
     setIsLoadingQuery(true);
-
-    // Add user message to chat immediately
-    const userMessage: Message = { role: 'user', content: data.question };
-    setMessages(prev => [...prev, userMessage]);
+    setFailedQuery(null);
 
     // Prepare payload with conversation history
     const payload = {
-      question: data.question,
+      question: question,
       history: messages, // Send the entire conversation history
       ticket_data: ticketDraft,
+      state: conversationState,
       locations: locations.map(l => l.label),
       positions: positions.map(p => p.label),
       websites: websites.map(w => w.label),
     };
+
+    mainInstance
+      .post(`/rag/query`, payload)
+      .then(response => {
+        if (response.data.state) {
+          setConversationState(response.data.state);
+        }
+
+        const assistantMessage: Message = {
+          role: 'assistant',
+          content: response.data.answer,
+        };
+
+        setMessages(prev => [...prev, assistantMessage]);
+
+        if (response.data.ticket_data) {
+          setTicketDraft(response.data.ticket_data);
+        }
+
+        if (
+          response.data.type === 'create' ||
+          response.data.type === 'cancel'
+        ) {
+          setConversationState(null);
+        }
+      })
+      .catch(error => {
+        // Add assistant response to chat
+        const assistantMessage: Message = {
+          role: 'assistant',
+          content:
+            error.response?.data?.error ||
+            'An error occurred. Please try again.',
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+
+        // Store failed query for retry
+        setFailedQuery({
+          question: question,
+          timestamp: Date.now(),
+        });
+      })
+      .finally(() => {
+        setIsLoadingQuery(false);
+      });
+  };
+
+  const onSubmit = (data: z.infer<typeof FormSchema>) => {
+    // Add user message to chat immediately
+    const userMessage: Message = { role: 'user', content: data.question };
+    setMessages(prev => [...prev, userMessage]);
+
+    executeQuery(data.question);
 
     form.reset({
       question: '',
@@ -264,35 +139,16 @@ const ChatBotPage = () => {
     if (textareaRef.current) {
       textareaRef.current.style.height = '80px';
     }
+  };
 
-    mainInstance
-      .post(`/rag/query`, payload)
-      .then(response => {
-        const assistantMessage: Message = {
-          role: 'assistant',
-          content: response.data.answer,
-        };
+  const handleRetry = () => {
+    if (failedQuery) {
+      // Remove the last error message
+      setMessages(prev => prev.slice(0, -1));
 
-        setMessages(prev => [...prev, assistantMessage]);
-
-        // ✅ Save pending ticket if exists
-        if (response.data.ticket_data) {
-          setTicketDraft(response.data.ticket_data);
-        } else {
-          setTicketDraft(null);
-        }
-      })
-      .catch(error => {
-        // Add assistant response to chat
-        const assistantMessage: Message = {
-          role: 'assistant',
-          content: error.response.data.error,
-        };
-        setMessages(prev => [...prev, assistantMessage]);
-      })
-      .finally(() => {
-        setIsLoadingQuery(false);
-      });
+      // Retry the query
+      executeQuery(failedQuery.question);
+    }
   };
 
   const handleExampleClick = (question: string) => {
@@ -311,48 +167,23 @@ const ChatBotPage = () => {
     }
   };
 
-  const getMicrophoneButtonProps = () => {
-    if (
-      microphoneStatus === 'not-found' ||
-      microphoneStatus === 'unsupported'
-    ) {
-      return {
-        disabled: true,
-        title: 'No microphone detected',
-        icon: <FaMicrophoneSlash />,
-        variant: 'ghost' as const,
-      };
-    }
-    if (microphoneStatus === 'denied') {
-      return {
-        disabled: false,
-        title: 'Microphone access blocked - click to request',
-        icon: listening ? <FaStop /> : <FaMicrophone />,
-        variant: listening ? 'default' : ('ghost' as const),
-      };
-    }
-    return {
-      disabled: false,
-      title: listening ? 'Stop listening' : 'Start voice input',
-      icon: listening ? <FaStop /> : <FaMicrophone />,
-      variant: listening ? 'default' : ('ghost' as const),
-    };
-  };
+  const handleClearAll = () => {
+    // Reset all states
+    setMessages([]);
+    setTicketDraft(null);
+    setConversationState(null);
+    setFailedQuery(null);
 
-  const getMicrophoneStatusMessage = () => {
-    switch (microphoneStatus) {
-      case 'not-found':
-        return 'No microphone detected. Please connect a microphone to use voice input.';
-      case 'denied':
-        return 'Microphone access blocked. Click the microphone button to request permission.';
-      case 'unsupported':
-        return 'Speech recognition is not supported in your browser.';
-      default:
-        return null;
+    // Reset form
+    form.reset({
+      question: '',
+    });
+
+    // Reset textarea height
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '80px';
     }
   };
-
-  const statusMessage = getMicrophoneStatusMessage();
 
   return (
     <div className="flex h-[calc(100vh-7rem)] flex-col">
@@ -371,7 +202,7 @@ const ChatBotPage = () => {
                 <h4 className="font-semibold">Ask Conney</h4>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <SystemDropdownSelect
                   isMulti
                   module="Company"
@@ -460,6 +291,23 @@ const ChatBotPage = () => {
                       >
                         <div>
                           <MarkdownRenderer text={message.content} />
+
+                          {/* Show retry button if this is the last message and it's an error */}
+                          {index === messages.length - 1 &&
+                            message.role === 'assistant' &&
+                            failedQuery &&
+                            !isLoadingQuery && (
+                              <div className="mt-2 flex justify-end">
+                                <Button
+                                  variant="outline"
+                                  size="xs"
+                                  onClick={handleRetry}
+                                  type="button"
+                                >
+                                  Retry
+                                </Button>
+                              </div>
+                            )}
                         </div>
                       </div>
 
@@ -506,7 +354,7 @@ const ChatBotPage = () => {
                         <Textarea
                           {...field}
                           ref={textareaRef}
-                          placeholder="Type your question here or click the microphone to speak..."
+                          placeholder="Type your question here..."
                           className="min-h-20 resize-none overflow-y-auto"
                           style={{ maxHeight: '200px' }}
                           onInput={adjustTextareaHeight}
@@ -532,37 +380,17 @@ const ChatBotPage = () => {
 
                 <div className="mt-2 flex justify-between gap-2">
                   <div>
-                    {/* Microphone status message */}
-                    {/* {statusMessage && (
-                      <div className="mt-2 text-sm text-amber-500">
-                        <span>{statusMessage}</span>
-                      </div>
-                    )} */}
-
-                    {/* Listening indicator */}
-                    {listening && (
-                      <div className="mt-2 flex animate-pulse items-center gap-2 text-sm text-red-500">
-                        <div className="size-2 rounded-full bg-red-500"></div>
-                        <span>Listening... Speak your question</span>
-                      </div>
-                    )}
+                    {/* Clear button */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleClearAll}
+                      title="Clear conversation"
+                    >
+                      Clear
+                    </Button>
                   </div>
                   <div className="ml-auto flex gap-2">
-                    {browserSupportsSpeechRecognition && (
-                      <Button
-                        className={`rounded-full ${
-                          listening ? 'bg-red-500 hover:bg-red-600' : ''
-                        } ${microphoneStatus === 'not-found' ? 'cursor-not-allowed opacity-50' : ''}`}
-                        variant={listening ? 'success' : 'ghost'}
-                        size="icon"
-                        type="button"
-                        onClick={toggleListening}
-                        disabled={getMicrophoneButtonProps().disabled}
-                        title={getMicrophoneButtonProps().title}
-                      >
-                        {getMicrophoneButtonProps().icon}
-                      </Button>
-                    )}
                     <Button
                       type="submit"
                       className="rounded-full"

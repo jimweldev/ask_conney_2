@@ -34,14 +34,18 @@ const MainTemplateSidebar = ({
         open ? '-ml-[280px] lg:ml-0' : 'ml-0 lg:-ml-[280px]'
       }`}
     >
-      <div className="p-layout flex flex-col items-center justify-between">
-        <Link className="w-full max-w-[80px] overflow-hidden rounded-md" to="/">
-          <ReactImage src="asd" fallback="/logos/logo.svg" />
-        </Link>
-        <h1 className="mt-2 text-center font-semibold transition-[margin,opacity,hidden] group-data-[collapsible=icon]:hidden group-data-[collapsible=icon]:opacity-0">
+      {/* Logo Section */}
+      <Link to="/" className="flex items-center gap-3 p-4">
+        <ReactImage
+          className="size-6"
+          src="/"
+          fallback="/logos/app-logo.png"
+          alt="MegaTool Logo"
+        />
+        <h1 className="text-muted-foreground font-semibold">
           {import.meta.env.VITE_APP_NAME}
         </h1>
-      </div>
+      </Link>
       <div className="p-4 pt-0">
         <nav>
           <ul>
