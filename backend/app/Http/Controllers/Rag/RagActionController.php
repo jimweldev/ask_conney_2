@@ -6,7 +6,9 @@ use App\Helpers\DynamicLogger;
 use App\Helpers\QueryHelper;
 use App\Http\Controllers\Controller;
 use App\Models\Rag\RagAction;
+use App\Models\Rag\RagActionField;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class RagActionController extends Controller {
     private $logger;
@@ -22,7 +24,7 @@ class RagActionController extends Controller {
         $queryParams = $request->all();
 
         try {
-            $query = RagAction::query();
+            $query = RagAction::with('fields');
             $type = 'paginate';
             QueryHelper::apply($query, $queryParams, $type);
 
@@ -75,11 +77,46 @@ class RagActionController extends Controller {
      */
     public function store(Request $request) {
         try {
-            $request['default_values'] = json_encode($request['default_values']);
-            $record = RagAction::create($request->all());
+            DB::beginTransaction();
 
-            return response()->json($record, 201);
+            // Create the main rag action
+            $ragAction = RagAction::create([
+                'name' => $request->name,
+                'description' => $request->description,
+                'endpoint' => $request->endpoint,
+                'notes' => $request->notes,
+            ]);
+
+            // Create the associated fields
+            if ($request->has('fields') && is_array($request->fields)) {
+                foreach ($request->fields as $fieldData) {
+                    // Prepare dropdown options if exists
+                    if (isset($fieldData['dropdown_options']) && is_array($fieldData['dropdown_options'])) {
+                        $fieldData['dropdown_options'] = json_encode($fieldData['dropdown_options']);
+                    }
+
+                    // Create the field
+                    RagActionField::create([
+                        'rag_action_id' => $ragAction->id,
+                        'order' => $fieldData['order'] ?? 0,
+                        'name' => $fieldData['name'],
+                        'type' => $fieldData['type'],
+                        'default_value' => $fieldData['default_value'] ?? null,
+                        'dropdown_options' => $fieldData['dropdown_options'] ?? null,
+                        'is_required' => $fieldData['is_required'] ?? false,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            // Load the fields relationship for the response
+            $ragAction->load('fields');
+
+            return response()->json($ragAction, 201);
         } catch (\Exception $e) {
+            DB::rollBack();
+
             return response()->json([
                 'message' => 'An error occurred',
                 'error' => $e->getMessage(),

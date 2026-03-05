@@ -36,10 +36,7 @@ const RagActionsPage = () => {
   const columns: DataTableColumn[] = [
     { label: 'ID', column: 'id', className: 'w-[80px]' },
     { label: 'Name', column: 'name' },
-    { label: 'Type', column: 'type' },
-    { label: 'Target Table', column: 'target_table' },
     { label: 'Description', column: 'description' },
-    { label: 'Default Values', column: 'default_values' },
     { label: 'Created At', column: 'created_at', className: 'w-[200px]' },
     { label: 'Actions', className: 'w-[100px]' },
   ];
@@ -67,10 +64,7 @@ const RagActionsPage = () => {
                   <TableRow key={ragAction.id}>
                     <TableCell>{ragAction.id}</TableCell>
                     <TableCell>{ragAction.name}</TableCell>
-                    <TableCell>{ragAction.type}</TableCell>
-                    <TableCell>{ragAction.target_table}</TableCell>
                     <TableCell>{ragAction.description}</TableCell>
-                    <TableCell>{ragAction.default_values}</TableCell>
                     <TableCell>
                       {getDateTimezone(ragAction.created_at, 'date_time')}
                     </TableCell>

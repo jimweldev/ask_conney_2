@@ -102,16 +102,6 @@ class RagSeeder extends Seeder {
                     'order' => '7',
                     'is_required' => true,
                 ],
-                // [] workstation: PH - Work From Home
-                [
-                    'rag_action_id' => $itHelpdeskSupport->id,
-                    'name' => 'workstation',
-                    'type' => 'string',
-                    'default_value' => null,
-                    'dropdown_options' => null,
-                    'order' => '8',
-                    'is_required' => false,
-                ],
             ]);
 
             $megaToolSupport = RagAction::create([
@@ -184,16 +174,6 @@ class RagSeeder extends Seeder {
                     'dropdown_options' => null,
                     'order' => '7',
                     'is_required' => true,
-                ],
-                // [] workstation: PH - Work From Home
-                [
-                    'rag_action_id' => $megaToolSupport->id,
-                    'name' => 'workstation',
-                    'type' => 'string',
-                    'default_value' => null,
-                    'dropdown_options' => null,
-                    'order' => '8',
-                    'is_required' => false,
                 ],
             ]);
         } catch (\Throwable $th) {

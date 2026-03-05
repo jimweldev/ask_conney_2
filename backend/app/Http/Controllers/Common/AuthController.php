@@ -12,12 +12,12 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Socialite\Facades\Socialite;
+use Osama\LaravelTeamsNotification\TeamsNotification;
 use PragmaRX\Google2FA\Google2FA;
 use PragmaRX\Google2FAQRCode\Google2FA as Google2FAQRCode;
 use Tymon\JWTAuth\Exceptions\TokenExpiredException;
 use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 use Tymon\JWTAuth\Facades\JWTAuth;
-use Osama\LaravelTeamsNotification\TeamsNotification;
 
 class AuthController extends Controller {
     public function registerWithEmail(Request $request): JsonResponse {
@@ -39,13 +39,13 @@ class AuthController extends Controller {
     public function loginWithEmail(Request $request): JsonResponse {
         $user = User::where('email', $request->input('email'))->first();
 
-        $notification = new TeamsNotification();
-        $message = "Data Update";
+        $notification = new TeamsNotification;
+        $message = 'Data Update';
         $data = [
             'user_id' => 12345,
             'action' => 'update',
             'status' => 'success',
-            'timestamp' => date('Y-m-d H:i:s')
+            'timestamp' => date('Y-m-d H:i:s'),
         ];
         $notification->success()->sendJsonMessage($message, $data);
 
