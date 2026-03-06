@@ -72,7 +72,7 @@ const LoginPage = () => {
       <div className="flex w-full max-w-sm flex-col gap-3">
         {/* Logo and App Name */}
         <div className="flex flex-col items-center justify-center gap-2">
-          <img className="size-15" src="/logos/logo.svg" alt="Logo" />
+          <img className="size-15" src="/logos/app-logo.png" alt="Logo" />
           <h4 className="text-center text-xl font-semibold">
             {import.meta.env.VITE_APP_NAME}
           </h4>

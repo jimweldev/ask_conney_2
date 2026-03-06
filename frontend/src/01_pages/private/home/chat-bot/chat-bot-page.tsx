@@ -187,7 +187,7 @@ const ChatBotPage = () => {
 
   return (
     <div className="flex h-[calc(100vh-7rem)] flex-col">
-      <PageHeader className="mb-3">Ask Conney</PageHeader>
+      <PageHeader className="mb-3">Ask Connie</PageHeader>
 
       <Card className="flex flex-1 flex-col overflow-hidden">
         <Form {...form}>
@@ -199,7 +199,7 @@ const ChatBotPage = () => {
             <CardHeader className="flex justify-between border-b">
               <div className="flex items-center gap-2">
                 <FaRobot className="bg-primary size-8 shrink-0 rounded-full p-1.5 text-white" />
-                <h4 className="font-semibold">Ask Conney</h4>
+                <h4 className="font-semibold">Ask Connie</h4>
               </div>
 
               <div className="flex items-center gap-2">

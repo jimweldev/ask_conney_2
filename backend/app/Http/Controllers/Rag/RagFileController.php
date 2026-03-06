@@ -366,6 +366,14 @@ class RagFileController extends Controller {
             }
 
             if ($action === 'create') {
+                // https://test-megaform-api.connextglobal.com/rag/ticketing/<proj name>
+                // POST:
+                // user_id
+                // issue
+                // impact
+                // urgency
+                // issue_summary
+                // issue_description
                 return response()->json([
                     'type' => 'create',
                     'ticket_data' => $data,
